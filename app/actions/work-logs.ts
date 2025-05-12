@@ -1,4 +1,4 @@
-"\"use server"
+"use server"
 
 import { format, startOfMonth, endOfMonth } from "date-fns"
 import { query } from "@/lib/db"
