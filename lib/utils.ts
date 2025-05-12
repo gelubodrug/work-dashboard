@@ -1,18 +1,11 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { format } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString("ro-RO", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+export function formatDateForSQL(date: Date): string {
+  return format(date, "yyyy-MM-dd")
 }
-

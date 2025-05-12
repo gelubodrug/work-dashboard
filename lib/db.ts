@@ -1,114 +1,69 @@
-import { neon } from "@neondatabase/serverless"
-import { drizzle } from "drizzle-orm/neon-http"
-import type { Assignment, User } from "./types"
+import { Pool } from "@neondatabase/serverless"
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not set")
-}
+// Create a connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: true,
+})
 
-const sql = neon(process.env.DATABASE_URL)
-export const db = drizzle(sql)
-
-export async function getAssignments(): Promise<Assignment[]> {
+// Export a query function
+export async function query(text: string, params?: any[]) {
   try {
-    const result = await db.execute("SELECT * FROM assignments")
-    return result.rows as Assignment[]
+    const start = Date.now()
+    const result = await pool.query(text, params)
+    const duration = Date.now() - start
+    console.log("Executed query", { text, duration, rows: result.rowCount })
+    return result
   } catch (error) {
-    console.error("Error fetching assignments:", error)
-    throw new Error(`Failed to fetch assignments: ${error instanceof Error ? error.message : String(error)}`)
+    console.error("Error executing query:", error)
+    throw error
   }
 }
 
-export async function setAssignments(assignments: Assignment[]): Promise<void> {
-  try {
-    await db.execute("DELETE FROM assignments")
+// Add the missing sql export - a tagged template function for SQL queries
+export const sql = (strings: TemplateStringsArray, ...values: any[]) => {
+  // Convert the template strings and values to a query string and parameters
+  let text = strings[0]
+  const params: any[] = []
 
-    for (const assignment of assignments) {
-      await db.execute(
-        `
-        INSERT INTO assignments (
-          id, type, start_date, due_date, completion_date, 
-          location, team_lead, members, status, hours
-        ) 
-        VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-        )
-      `,
-        [
-          assignment.id,
-          assignment.type,
-          assignment.start_date,
-          assignment.due_date,
-          assignment.completion_date,
-          assignment.location,
-          assignment.team_lead,
-          JSON.stringify(assignment.members),
-          assignment.status,
-          assignment.hours,
-        ],
-      )
-    }
-  } catch (error) {
-    console.error("Error setting assignments:", error)
-    throw new Error(`Failed to set assignments: ${error instanceof Error ? error.message : String(error)}`)
+  for (let i = 0; i < values.length; i++) {
+    params.push(values[i])
+    text += `$${params.length}${strings[i + 1] || ""}`
+  }
+
+  // Return a function that executes the query
+  return {
+    then: async (callback: (result: any) => void) => {
+      try {
+        const result = await query(text, params)
+        return callback(result)
+      } catch (error) {
+        throw error
+      }
+    },
+    catch: async (callback: (error: any) => void) => {
+      try {
+        await query(text, params)
+      } catch (error) {
+        return callback(error)
+      }
+    },
+    execute: async () => {
+      return await query(text, params)
+    },
+    // Add these properties to make it compatible with the existing code
+    get rows() {
+      return []
+    },
+    get rowCount() {
+      return 0
+    },
+    async execute() {
+      const result = await query(text, params)
+      return result
+    },
   }
 }
 
-export async function getUsers(): Promise<User[]> {
-  try {
-    const result = await db.execute("SELECT * FROM users")
-    return result.rows as User[]
-  } catch (error) {
-    console.error("Error fetching users:", error)
-    throw new Error(`Failed to fetch users: ${error instanceof Error ? error.message : String(error)}`)
-  }
-}
-
-export async function setUsers(users: User[]): Promise<void> {
-  try {
-    await db.execute("DELETE FROM users")
-
-    for (const user of users) {
-      await db.execute(
-        `
-        INSERT INTO users (
-          id, name, email, role, status, 
-          total_hours, current_assignment
-        ) 
-        VALUES (
-          $1, $2, $3, $4, $5, $6, $7
-        )
-      `,
-        [user.id, user.name, user.email, user.role, user.status, user.total_hours, user.current_assignment],
-      )
-    }
-  } catch (error) {
-    console.error("Error setting users:", error)
-    throw new Error(`Failed to set users: ${error instanceof Error ? error.message : String(error)}`)
-  }
-}
-
-export async function initializeDefaultUsers(): Promise<void> {
-  try {
-    const defaultUsers: User[] = [
-      {
-        id: 1,
-        name: null,
-        email: null,
-        role: null,
-        status: "",
-        total_hours: 0,
-        current_assignment: null,
-      },
-      // Add more default users if needed
-    ]
-    await setUsers(defaultUsers)
-    console.log("Default users initialized successfully")
-  } catch (error) {
-    console.error("Error initializing default users:", error)
-    throw new Error(`Failed to initialize default users: ${error instanceof Error ? error.message : String(error)}`)
-  }
-}
-
-export { sql }
-
+// Export the pool for direct use if needed
+export { pool }

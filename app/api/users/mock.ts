@@ -1,0 +1,48 @@
+// Sample user data for testing
+export const mockUsers = [
+  {
+    id: 1,
+    name: "John Doe",
+    email: "john.doe@example.com",
+    role: "Admin",
+    status: "Liber",
+    total_hours: 120,
+    current_assignment: null,
+  },
+  {
+    id: 2,
+    name: "Jane Smith",
+    email: "jane.smith@example.com",
+    role: "Tehnician",
+    status: "In Deplasare",
+    total_hours: 85,
+    current_assignment: "Cluj - 456",
+  },
+  {
+    id: 3,
+    name: "Alex Johnson",
+    email: "alex.johnson@example.com",
+    role: "Manager",
+    status: "Liber",
+    total_hours: 150,
+    current_assignment: null,
+  },
+  {
+    id: 4,
+    name: "Maria Popescu",
+    email: "maria.popescu@example.com",
+    role: "Tehnician",
+    status: "In Deplasare",
+    total_hours: 95,
+    current_assignment: "Iasi - 234",
+  },
+  {
+    id: 5,
+    name: "Andrei Ionescu",
+    email: "andrei.ionescu@example.com",
+    role: "Tehnician",
+    status: "Concediu",
+    total_hours: 75,
+    current_assignment: null,
+  },
+]

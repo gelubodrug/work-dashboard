@@ -1,34 +1,25 @@
-export interface Assignment {
-  id: number
-  type: string
-  start_date: string | null
-  due_date: string
-  completion_date: string | null
-  location: string
-  team_lead: string
-  members: string[]
-  status: string
-  hours: number
-}
-
-export interface User {
-  id: number
-  name: string | null
-  email: string | null
-  role: string | null
-  status: string
-  total_hours: number
-  current_assignment: string | null
-}
-
-export interface WorkLog {
-  id: number
+export type Assignment = {
+  id: string
   user_id: number
-  assignment_id: number
-  work_date: string
+  date: string | null
+  type: string
+  status: string
+  location: string
+  kilometers: number
   hours: number
-  description: string | null
   created_at: string
   updated_at: string
+  team_lead: string
+  members: string[]
+  start_date: string
+  due_date: string | null
+  completion_date: string | null
+  start_location: string | null
+  end_location: string | null
+  store_number?: string | null
+  county?: string | null
+  city?: string | null
+  magazin?: string | null
+  county_code?: string | null
+  car_plate?: string | null
 }
-

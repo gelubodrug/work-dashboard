@@ -1,73 +1,51 @@
-"use client"
-
+import type { User } from "@/lib/db/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Coins } from "lucide-react"
 
-export function TopWorkers({ className }: { className?: string }) {
-  const workers = [
-    {
-      name: "RAZVAN MIHAILA",
-      hours: 48,
-      assignments: 2,
-      status: "Liber",
-    },
-    {
-      name: "CREATA VALENTIN",
-      hours: 24,
-      assignments: 1,
-      status: "Liber",
-    },
-    {
-      name: "BADEA STEFAN-ADRIAN",
-      hours: 16,
-      assignments: 1,
-      status: "In deplasare",
-    },
-    {
-      name: "CONSTANTIN IONUT COSMIN",
-      hours: 12,
-      assignments: 1,
-      status: "In deplasare",
-    },
-  ]
+interface TopWorkersProps {
+  users: User[]
+  limit?: number
+}
+
+export function TopWorkers({ users, limit = 10 }: TopWorkersProps) {
+  // Sort users by total_hours in descending order
+  const sortedUsers = [...users].sort((a, b) => (b.total_hours || 0) - (a.total_hours || 0)).slice(0, limit)
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Top Workers</CardTitle>
-        <CardDescription>Workers with most hours this month</CardDescription>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Top Riders</CardTitle>
+        <CardDescription>Top {limit} riders based on total hours</CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Hours</TableHead>
-              <TableHead>Assignments</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {workers.map((worker) => (
-              <TableRow key={worker.name}>
-                <TableCell>{worker.name}</TableCell>
-                <TableCell>{worker.hours}</TableCell>
-                <TableCell>{worker.assignments}</TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                      worker.status === "Liber" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {worker.status}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="space-y-4">
+          {sortedUsers.map((user) => (
+            <div key={user.id} className="flex items-center">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback>
+                  {user.name
+                    ? user.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                    : "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="ml-4 space-y-1">
+                <p className="text-sm font-medium leading-none">{user.name}</p>
+                <p className="text-sm text-muted-foreground">{user.total_hours || 0} hours</p>
+              </div>
+              <div className="ml-auto font-medium">
+                <div className="flex items-center gap-1">
+                  <Coins className="h-4 w-4 text-gray-400" />
+                  <span>0</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
 }
-

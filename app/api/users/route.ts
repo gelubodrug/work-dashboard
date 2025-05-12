@@ -1,45 +1,52 @@
 import { NextResponse } from "next/server"
-import { getUsers, setUsers, initializeDefaultUsers, type User } from "@/lib/db"
+import { query } from "@/lib/db"
 
 export async function GET() {
   try {
-    console.log("Fetching users...")
-    let users = await getUsers()
-
-    if (!users || users.length === 0) {
-      console.log("No users found. Initializing default users...")
-      await initializeDefaultUsers()
-      users = await getUsers()
-    }
-
-    console.log("Users fetched successfully:", users.length)
-    return NextResponse.json(users)
-  } catch (error) {
-    console.error("Error fetching or initializing users:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "An unknown error occurred" },
-      { status: 500 },
+    const result = await query(
+      `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.role,
+        u.status,
+        u.total_hours,
+        u.current_assignment,
+        COALESCE(
+          (SELECT SUM(hours) 
+           FROM work_logs 
+           WHERE user_id = u.id 
+             AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)
+          ), 0
+        ) as current_month_hours,
+        CASE 
+          WHEN u.status = 'Liber' THEN 
+            (SELECT completion_date 
+             FROM assignments 
+             WHERE team_lead = u.name 
+                OR members::text LIKE '%' || u.name || '%' 
+             ORDER BY completion_date DESC 
+             LIMIT 1)
+          ELSE NULL 
+        END as last_completion_date,
+        CASE 
+          WHEN u.status = 'In Deplasare' THEN 
+            (SELECT start_date 
+             FROM assignments 
+             WHERE (team_lead = u.name OR members::text LIKE '%' || u.name || '%')
+               AND status != 'Finalizat' 
+             LIMIT 1)
+          ELSE NULL 
+        END as current_start_date
+      FROM users u
+      ORDER BY u.name
+      `,
     )
+
+    return NextResponse.json(result.rows)
+  } catch (error) {
+    console.error("Error fetching users from database:", error)
+    return NextResponse.json([])
   }
 }
-
-export async function POST(request: Request) {
-  try {
-    const users = (await request.json()) as User[]
-    if (!Array.isArray(users)) {
-      throw new Error("Invalid users data")
-    }
-
-    console.log("Setting users...")
-    await setUsers(users)
-    console.log("Users set successfully")
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error setting users:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "An unknown error occurred" },
-      { status: 500 },
-    )
-  }
-}
-

@@ -11,27 +11,38 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface ConfirmDeleteDialogProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: () => void
-  itemType: "user" | "assignment"
+  onConfirm: (password?: string) => void
+  title: string
+  description: string
+  requirePassword?: boolean
 }
 
-export function ConfirmDeleteDialog({ isOpen, onClose, onConfirm, itemType }: ConfirmDeleteDialogProps) {
+export function ConfirmDeleteDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  requirePassword = false,
+}: ConfirmDeleteDialogProps) {
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState("")
 
   const handleConfirm = () => {
-    if (password === "1111") {
-      onConfirm()
-      onClose()
+    if (requirePassword) {
+      if (password === "1111") {
+        setError("")
+        onConfirm(password)
+      } else {
+        setError("Incorrect password. Please try again.")
+      }
     } else {
-      setError("Incorrect password. Please try again.")
+      onConfirm()
     }
   }
 
@@ -39,35 +50,38 @@ export function ConfirmDeleteDialog({ isOpen, onClose, onConfirm, itemType }: Co
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Deletion</DialogTitle>
-          <DialogDescription>Please enter the password to confirm deletion of this {itemType}.</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+
+        {requirePassword && (
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="text-sm font-medium">Enter password to confirm deletion:</div>
             <Input
-              id="password"
               type="password"
-              placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              className="w-full"
             />
+            {error && (
+              <div className="flex items-center text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                {error}
+              </div>
+            )}
           </div>
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </div>
+        )}
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>Confirm Delete</Button>
+          <Button variant="destructive" onClick={handleConfirm}>
+            Delete
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
-

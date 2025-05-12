@@ -1,19 +1,35 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export function DateRangePicker({ className }: React.HTMLAttributes<HTMLDivElement>) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
-  })
+interface DateRangePickerProps {
+  value: DateRange | undefined
+  onValueChange: (value: [Date, Date]) => void
+  className?: string
+}
+
+export function DateRangePicker({ value, onValueChange, className }: DateRangePickerProps) {
+  const [date, setDate] = React.useState<DateRange | undefined>(value)
+
+  // Update local state when prop changes
+  React.useEffect(() => {
+    setDate(value)
+  }, [value])
+
+  // Handle date selection
+  const handleSelect = (range: DateRange | undefined) => {
+    setDate(range)
+    if (range?.from && range?.to) {
+      onValueChange([range.from, range.to])
+    }
+  }
 
   return (
     <div className={cn("grid gap-2", className)}>
@@ -21,8 +37,12 @@ export function DateRangePicker({ className }: React.HTMLAttributes<HTMLDivEleme
         <PopoverTrigger asChild>
           <Button
             id="date"
-            variant={"outline"}
-            className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+            variant="outline"
+            size="sm"
+            className={cn(
+              "h-9 rounded-full bg-gray-50 hover:bg-gray-100 justify-start text-left font-normal",
+              !date && "text-muted-foreground",
+            )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {date?.from ? (
@@ -34,7 +54,7 @@ export function DateRangePicker({ className }: React.HTMLAttributes<HTMLDivEleme
                 format(date.from, "LLL dd, y")
               )
             ) : (
-              <span>Pick a date range</span>
+              <span>Custom Range</span>
             )}
           </Button>
         </PopoverTrigger>
@@ -44,12 +64,11 @@ export function DateRangePicker({ className }: React.HTMLAttributes<HTMLDivEleme
             mode="range"
             defaultMonth={date?.from}
             selected={date}
-            onSelect={setDate}
-            numberOfMonths={1}
+            onSelect={handleSelect}
+            numberOfMonths={2}
           />
         </PopoverContent>
       </Popover>
     </div>
   )
 }
-

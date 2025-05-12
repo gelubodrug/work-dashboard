@@ -1,0 +1,309 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { format, addDays, parseISO } from "date-fns"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon, ArrowDown, ArrowUp } from 'lucide-react'
+import { cn } from "@/lib/utils"
+import { query } from "@/lib/db"
+
+const calculateEstimatedDate = (signalDate: Date, priority: number): Date => {
+  let daysToAdd: number
+  switch (priority) {
+    case 0:
+      daysToAdd = 3
+      break
+    case 1:
+      daysToAdd = 5
+      break
+    case 2:
+      daysToAdd = 7
+      break
+    case 3:
+      daysToAdd = 14
+      break
+    case 4:
+      daysToAdd = 17
+      break
+    case 5:
+      daysToAdd = 21
+      break
+    default:
+      daysToAdd = 3
+  }
+  let estimatedDate = signalDate
+  let count = 0
+  while (count < daysToAdd) {
+    estimatedDate = addDays(estimatedDate, 1)
+    if (estimatedDate.getDay() !== 0 && estimatedDate.getDay() !== 6) {
+      count++
+    }
+  }
+  return estimatedDate
+}
+
+const calculateDaysToResolve = (signalDate: Date, estimatedDate: Date): number => {
+  const today = new Date()
+  const timeDiff = estimatedDate.getTime() - signalDate.getTime()
+  const daysDiff = timeDiff / (1000 * 3600 * 24)
+  return Math.floor(daysDiff)
+}
+
+export default function InteriorHiddenPage() {
+  const [interventions, setInterventions] = useState([])
+  const [newIntervention, setNewIntervention] = useState({
+    storeId: "",
+    storeName: "",
+    county: "",
+    signalDate: new Date(),
+    interventionDescription: "",
+    priority: 0,
+    alocatRezolvat: "Nealocat",
+    observatii: "",
+    problemeIntarziere: "",
+  })
+
+  const [isSignalDateOpen, setIsSignalDateOpen] = useState(false)
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setNewIntervention((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSignalDateChange = (date: Date | undefined) => {
+    if (date) {
+      setNewIntervention((prev) => ({ ...prev, signalDate: date }))
+    }
+  }
+
+  useEffect(() => {
+    if (newIntervention.storeId) {
+      const fetchStoreData = async () => {
+        try {
+          const result = await query(
+            `SELECT store_id, description, county FROM stores WHERE store_id = $1`,
+            [newIntervention.storeId],
+          )
+          if (result.rows.length > 0) {
+            const store = result.rows[0]
+            setNewIntervention((prev) => ({
+              ...prev,
+              storeName: store.description,
+              county: store.county,
+            }))
+          } else {
+            setNewIntervention((prev) => ({
+              ...prev,
+              storeName: "Not Found",
+              county: "Not Found",
+            }))
+          }
+        } catch (error) {
+          console.error("Error fetching store data:", error)
+          setNewIntervention((prev) => ({
+            ...prev,
+            storeName: "Error",
+            county: "Error",
+          }))
+        }
+      }
+      fetchStoreData()
+    }
+  }, [newIntervention.storeId])
+
+  useEffect(() => {
+    const estimatedDate = calculateEstimatedDate(
+      newIntervention.signalDate,
+      newIntervention.priority,
+    )
+    const daysToResolve = calculateDaysToResolve(
+      newIntervention.signalDate,
+      estimatedDate,
+    )
+    setNewIntervention((prev) => ({
+      ...prev,
+      estimatedDate,
+      daysToResolve,
+    }))
+  }, [newIntervention.signalDate, newIntervention.priority])
+
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-4">Interventions per Store</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Add New Intervention</CardTitle>
+          <CardDescription>Add a new intervention record</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="storeId">Mag. (Store ID)</Label>
+              <Input
+                type="text"
+                id="storeId"
+                name="storeId"
+                value={newIntervention.storeId}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="storeName">B (Store Name)</Label>
+              <Input
+                type="text"
+                id="storeName"
+                name="storeName"
+                value={newIntervention.storeName}
+                readOnly
+              />
+            </div>
+            <div>
+              <Label htmlFor="county">JUDET (County)</Label>
+              <Input
+                type="text"
+                id="county"
+                name="county"
+                value={newIntervention.county}
+                readOnly
+              />
+            </div>
+            <div>
+              <Label htmlFor="signalDate">Data Semnalata</Label>
+              <Popover open={isSignalDateOpen} onOpenChange={setIsSignalDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !newIntervention.signalDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {newIntervention.signalDate ? (
+                      format(newIntervention.signalDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newIntervention.signalDate}
+                    onSelect={handleSignalDateChange}
+                    disabled={false}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label htmlFor="interventionDescription">Descriere Interventie</Label>
+              <Input
+                type="text"
+                id="interventionDescription"
+                name="interventionDescription"
+                value={newIntervention.interventionDescription}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="priority">Prioritate</Label>
+              <Select
+                onValueChange={(value) =>
+                  setNewIntervention((prev) => ({ ...prev, priority: parseInt(value) }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selectează prioritatea" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, 1, 2, 3, 4, 5].map((priority) => (
+                    <SelectItem key={priority} value={priority.toString()}>
+                      {priority}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="alocatRezolvat">Alocat / Rezolvat</Label>
+              <Select
+                onValueChange={(value) =>
+                  setNewIntervention((prev) => ({ ...prev, alocatRezolvat: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selectează starea" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["Nealocat", "Alocat", "Rezolvat"].map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="estimatedDate">Data Estimata</Label>
+              <Input
+                type="text"
+                id="estimatedDate"
+                name="estimatedDate"
+                value={
+                  newIntervention.estimatedDate
+                    ? format(newIntervention.estimatedDate, "PPP")
+                    : ""
+                }
+                readOnly
+              />
+            </div>
+            <div>
+              <Label htmlFor="zilePanaLaRezolvare">Zile Pana la Rezolvare</Label>
+              <Input
+                type="text"
+                id="zilePanaLaRezolvare"
+                name="zilePanaLaRezolvare"
+                value={newIntervention.daysToResolve ? newIntervention.daysToResolve.toString() : ""}
+                readOnly
+              />
+            </div>
+            <div>
+              <Label htmlFor="problemeIntarziere">Probleme Intarziere Interventie</Label>
+              <Input
+                type="text"
+                id="problemeIntarziere"
+                name="problemeIntarziere"
+                value={newIntervention.problemeIntarziere}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="observatii">Observatii</Label>
+              <Input
+                type="text"
+                id="observatii"
+                name="observatii"
+                value={newIntervention.observatii}
+                onChange={handleInputChange}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
