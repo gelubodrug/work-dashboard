@@ -1,18 +1,21 @@
 /**
  * Normalizes a county name by capitalizing the first letter of each word
- * and converting the rest to lowercase
+ * and ensuring consistent formatting
  */
 export function normalizeCountyName(county: string): string {
   if (!county) return ""
 
-  return county
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ")
+  // Trim whitespace and split into words
+  const words = county.trim().split(/\s+/)
+
+  // Capitalize first letter of each word
+  const normalized = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ")
+
+  return normalized
 }
 
 /**
- * Performs a case-insensitive comparison of two strings
+ * Compares two strings ignoring case
  */
 export function equalsIgnoreCase(str1: string, str2: string): boolean {
   return str1.toLowerCase() === str2.toLowerCase()
