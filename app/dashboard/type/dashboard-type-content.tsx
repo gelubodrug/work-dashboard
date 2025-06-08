@@ -10,6 +10,7 @@ import { startOfMonth, endOfMonth, format, subMonths, addMonths } from "date-fns
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { getWorkDistributionByType } from "../../actions/work-logs"
 
 type WorkTypeData = {
   type: string
@@ -19,36 +20,11 @@ type WorkTypeData = {
   unique_store_ids?: string[]
 }
 
-// Mock data to use when API fails or during development
-const mockWorkTypes: WorkTypeData[] = [
-  {
-    type: "Interventie",
-    total_hours: 120,
-    assignment_count: 15,
-    store_count: 8,
-    unique_store_ids: ["1001", "1002", "1003", "1004", "1005", "1006", "1007", "1008"],
-  },
-  {
-    type: "Optimizare",
-    total_hours: 85,
-    assignment_count: 10,
-    store_count: 5,
-    unique_store_ids: ["2001", "2002", "2003", "2004", "2005"],
-  },
-  {
-    type: "Deschidere",
-    total_hours: 160,
-    assignment_count: 4,
-    store_count: 4,
-    unique_store_ids: ["3001", "3002", "3003", "3004"],
-  },
-]
-
 export function DashboardTypeContent({ initialType = "Interventie" }: { initialType?: string }) {
   const router = useRouter()
   const [selectedType, setSelectedType] = useState(initialType)
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [workTypes, setWorkTypes] = useState<WorkTypeData[]>(mockWorkTypes)
+  const [workTypes, setWorkTypes] = useState<WorkTypeData[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   // Use a ref to track if we've already fetched data for this date range
@@ -73,23 +49,17 @@ export function DashboardTypeContent({ initialType = "Interventie" }: { initialT
     async function fetchData() {
       setIsLoading(true)
       try {
-        // Uncomment this when ready to use real data
-        // const data = await getWorkDistributionByType(startDate, endDate);
-        // if (Array.isArray(data)) {
-        //   setWorkTypes(data);
-        // } else {
-        //   console.error("Invalid data format received:", data);
-        //   setWorkTypes(mockWorkTypes);
-        // }
-
-        // For now, use mock data with a delay to simulate API call
-        setTimeout(() => {
-          setWorkTypes(mockWorkTypes)
-          setIsLoading(false)
-        }, 500)
+        const data = await getWorkDistributionByType(startDate, endDate)
+        if (Array.isArray(data)) {
+          setWorkTypes(data)
+        } else {
+          console.error("Invalid data format received:", data)
+          setWorkTypes([])
+        }
       } catch (error) {
         console.error("Error fetching work type data:", error)
-        setWorkTypes(mockWorkTypes)
+        setWorkTypes([])
+      } finally {
         setIsLoading(false)
       }
     }

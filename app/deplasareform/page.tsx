@@ -83,11 +83,29 @@ export default function DeplasareFormPage() {
       try {
         // Fetch the assignment data
         const response = await fetch(`/api/assignments/${assignmentId}`)
+
+        // Check if response is ok
         if (!response.ok) {
-          throw new Error(`Failed to fetch assignment: ${response.status}`)
+          const errorText = await response.text()
+          console.error("API Response Error:", response.status, errorText)
+          throw new Error(`Failed to fetch assignment: ${response.status} - ${errorText}`)
+        }
+
+        // Check if response is JSON
+        const contentType = response.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          const responseText = await response.text()
+          console.error("Non-JSON Response:", responseText)
+          throw new Error("Server returned non-JSON response")
         }
 
         const assignment = await response.json()
+
+        // Check if assignment data is valid
+        if (!assignment || !assignment.id) {
+          throw new Error("Invalid assignment data received")
+        }
+
         setOriginalAssignment(assignment)
 
         // Populate form fields
