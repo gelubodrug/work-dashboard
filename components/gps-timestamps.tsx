@@ -1,4 +1,4 @@
-import { format, parseISO, addHours } from "date-fns"
+import { formatTime } from "@/utils/date-utils"
 
 interface GPSTimestampsProps {
   gpsStartDate: string | null
@@ -7,21 +7,21 @@ interface GPSTimestampsProps {
 }
 
 export function GPSTimestamps({ gpsStartDate, gpsCompletionDate, returnTime }: GPSTimestampsProps) {
+  // Use the formatTime function from utils/date-utils.ts
   const formatGPSTime = (dateString: string | null) => {
     if (!dateString) return "NA"
-    try {
-      const date = addHours(parseISO(dateString), 3)
-      return format(date, "HH:mm") // ✅ 24-hour format
-    } catch (e) {
-      return "Invalid"
-    }
+    return formatTime(dateString)
   }
 
   const formatDay = (dateString: string | null) => {
     if (!dateString) return "-"
     try {
-      const date = addHours(parseISO(dateString), 3)
-      return format(date, "d") // Only Day
+      const date = new Date(dateString)
+      // Use Romanian timezone for consistent display
+      return new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        timeZone: "Europe/Bucharest",
+      }).format(date)
     } catch (e) {
       return "-"
     }
