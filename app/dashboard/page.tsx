@@ -31,7 +31,6 @@ export default function DashboardPage() {
   const [workDistribution, setWorkDistribution] = useState([])
   const [totalHours, setTotalHours] = useState(0)
   const [totalKilometers, setTotalKilometers] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
   const [layout, setLayout] = useState<"grid" | "row">("grid")
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export default function DashboardPage() {
   const fetchDashboardData = useCallback(async () => {
     if (!dateRange?.from || !dateRange?.to) return
 
-    setIsLoading(true)
     try {
       // Fetch all workers by passing -1 as the limit
       const workers = await getTopWorkersByHours(-1, dateRange.from, dateRange.to)
@@ -73,8 +71,6 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
-    } finally {
-      setIsLoading(false)
     }
   }, [dateRange])
 
@@ -187,52 +183,46 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 max-w-3xl mx-auto gap-4">
-            {/* 1. Work Distribution */}
-            <SmallCard
-              title="Work Distribution"
-              description={`Assignment types - ${formatDateRange()}`}
-              customContent={<WorkDistribution distribution={workDistribution} />}
-            />
+        <div className="grid grid-cols-1 max-w-3xl mx-auto gap-4">
+          {/* 1. Work Distribution */}
+          <SmallCard
+            title="Work Distribution"
+            description={`Assignment types - ${formatDateRange()}`}
+            customContent={<WorkDistribution distribution={workDistribution} />}
+          />
 
-            {/* 2. Combined Top Workers and Top Riders with tabs */}
-            <Card className="col-span-1 md:col-span-1">
-              <CardHeader className="pb-2">
-                <div className="space-y-2">
-                  <CardTitle className="text-sm font-medium">
-                    Team Performance
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">- {formatDateRange()}</span>
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4">
-                <Tabs defaultValue="workers" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="workers">Top Workers</TabsTrigger>
-                    <TabsTrigger value="riders">Top Riders</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="workers" className="mt-0">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-semibold">Top Workers by Hours</h2>
-                    </div>
-                    <TopWorkers workers={topWorkers} />
-                  </TabsContent>
-                  <TabsContent value="riders" className="mt-0">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-semibold">Top Riders by Kilometers</h2>
-                    </div>
-                    <TopRiders riders={topRiders} />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+          {/* 2. Combined Top Workers and Top Riders with tabs */}
+          <Card className="col-span-1 md:col-span-1">
+            <CardHeader className="pb-2">
+              <div className="space-y-2">
+                <CardTitle className="text-sm font-medium">
+                  Team Performance
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">- {formatDateRange()}</span>
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              <Tabs defaultValue="workers" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="workers">Top Workers</TabsTrigger>
+                  <TabsTrigger value="riders">Top Riders</TabsTrigger>
+                </TabsList>
+                <TabsContent value="workers" className="mt-0">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold">Top Workers by Hours</h2>
+                  </div>
+                  <TopWorkers workers={topWorkers} />
+                </TabsContent>
+                <TabsContent value="riders" className="mt-0">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold">Top Riders by Kilometers</h2>
+                  </div>
+                  <TopRiders riders={topRiders} />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AppShell>
   )

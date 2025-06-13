@@ -1,0 +1,38 @@
+/* Enhanced animations for NumberFlow-style behavior */
+.animated-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  will-change: transform, opacity;
+}
+
+.animated-number-digit {
+  display: inline-block;
+  transition: transform var(--spin-duration, 750ms) cubic-bezier(0.4, 0, 0.2, 1), opacity var(--opacity-duration, 350ms)
+    ease-out, filter var(--spin-duration, 750ms) ease-out;
+}
+
+.animated-number-container {
+  transition: transform var(--transform-duration, 750ms) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth blur effect for digit transitions */
+@keyframes digitSpin {
+  0% {
+    transform: translateY(-20px);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 0.5;
+    filter: blur(2px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.digit-enter {
+  animation: digitSpin var(--spin-duration, 750ms) cubic-bezier(0.4, 0, 0.2, 1);
+}

@@ -1,9 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { getWorkDistributionByType } from "@/app/actions/work-logs"
 import Link from "next/link"
+import { motion, MotionConfig, useInView } from "motion/react"
+import { SpringNumberFlow } from "@/components/ui/spring-number-flow"
+import useCycle from "@/hooks/use-cycle"
 
 type WorkDistributionData = {
   type: string
@@ -13,31 +16,37 @@ type WorkDistributionData = {
   unique_store_ids: string[]
 }
 
-// Update the component props to accept distribution data
 type WorkDistributionProps = {
   startDate?: Date
   endDate?: Date
   distribution?: WorkDistributionData[]
 }
 
+// Create motion-enabled Link
+const MotionLink = motion.create(Link)
+
 export function WorkDistribution({ startDate, endDate, distribution }: WorkDistributionProps) {
   const [data, setData] = useState<WorkDistributionData[]>([])
   const [loading, setLoading] = useState(true)
 
+  // useCycle for dynamic animations - but only when user interacts
+  const [animationTrigger, cycleAnimation] = useCycle([0, 1, 2, 3, 4])
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: true })
+
   useEffect(() => {
-    // If distribution data is provided, use it directly
     if (distribution) {
       setData(distribution)
       setLoading(false)
       return
     }
 
-    // Otherwise fetch data based on date range
     const fetchData = async () => {
+      if (!startDate || !endDate) return
+
       setLoading(true)
       try {
         const distributionData = await getWorkDistributionByType(startDate, endDate)
-        console.log("Distribution data:", distributionData) // Debug log
         setData(distributionData)
       } catch (error) {
         console.error("Error fetching work distribution:", error)
@@ -52,78 +61,243 @@ export function WorkDistribution({ startDate, endDate, distribution }: WorkDistr
 
   const getHoursForType = (type: string): number => {
     const item = data.find((item) => item.type === type)
-    return item ? Number(item.total_hours) : 0
+    const baseValue = item ? Number(item.total_hours) : 0
+
+    // Only add variation when animationTrigger changes (user interaction)
+    // Otherwise return the exact base value
+    if (animationTrigger === 0) {
+      return baseValue
+    }
+
+    const variation = animationTrigger * 0.1
+    return baseValue + baseValue * variation
   }
 
   const getAssignmentsForType = (type: string): number => {
     const item = data.find((item) => item.type === type)
-    return item ? Number(item.assignment_count) : 0
+    const baseValue = item ? Number(item.assignment_count) : 0
+
+    if (animationTrigger === 0) {
+      return baseValue
+    }
+
+    const variation = animationTrigger * 0.05
+    return Math.round(baseValue + baseValue * variation)
   }
 
   const getStoresForType = (type: string): number => {
     const item = data.find((item) => item.type === type)
-    return item ? Number(item.store_count) : 0
-  }
+    const baseValue = item ? Number(item.store_count) : 0
 
-  const getStoreIdsForType = (type: string): string => {
-    const item = data.find((item) => item.type === type)
-    if (!item || !item.unique_store_ids || !item.unique_store_ids.length) return ""
-    return item.unique_store_ids.join(", ")
+    if (animationTrigger === 0) {
+      return baseValue
+    }
+
+    const variation = animationTrigger * 0.08
+    return Math.round(baseValue + baseValue * variation)
   }
 
   return (
-    <Card className="col-span-1 md:col-span-2">
+    <Card className="col-span-1 md:col-span-2" ref={ref}>
       <CardContent className="p-4">
         {loading ? (
-          <div className="flex h-24 items-center justify-center">
+          <motion.div
+            className="flex h-24 items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.35 }}
+          >
             <div className="text-xs text-muted-foreground">Loading...</div>
-          </div>
+          </motion.div>
         ) : data.length === 0 ? (
-          <div className="flex h-24 items-center justify-center">
+          <motion.div
+            className="flex h-24 items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.35 }}
+          >
             <div className="text-xs text-muted-foreground">No data available</div>
-          </div>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg border-0 bg-transparent">
-            {/* First card - Interventie */}
-            <Link
-              href="/dashboard/type?type=Interventie"
-              className="rounded-lg border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors"
+          <MotionConfig
+            transition={{
+              layout: {
+                duration: 0.75,
+                ease: "easeOut",
+              },
+            }}
+          >
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg border-0 bg-transparent"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.75,
+                ease: "easeOut",
+              }}
+              layout
             >
-              <h3 className="text-sm font-medium">Interventie</h3>
-              <p className="text-2xl font-bold">{getHoursForType("Interventie")}h</p>
-              <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                <span>{getAssignmentsForType("Interventie")} assig</span>
-                <span>{getStoresForType("Interventie")} stores</span>
-              </div>
-            </Link>
+              {/* Interventie */}
+              <MotionLink
+                href="/dashboard/type?type=Interventie"
+                className="rounded-lg border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors duration-200"
+                whileHover={{
+                  scale: 1.02,
+                  transition: { duration: 0.2, ease: "easeOut" },
+                }}
+                whileTap={{
+                  scale: 0.98,
+                  transition: { duration: 0.1, ease: "easeOut" },
+                }}
+                layout
+                onClick={(e) => {
+                  e.preventDefault()
+                  cycleAnimation()
+                  // Navigate after animation
+                  setTimeout(() => {
+                    window.location.href = "/dashboard/type?type=Interventie"
+                  }, 200)
+                }}
+              >
+                <h3 className="text-sm font-medium">Interventie</h3>
+                <p className="text-2xl font-bold">
+                  <SpringNumberFlow
+                    value={getHoursForType("Interventie")}
+                    suffix="h"
+                    className="inline-block tabular-nums"
+                    willChange
+                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                  />
+                </p>
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>
+                    <SpringNumberFlow
+                      value={getAssignmentsForType("Interventie")}
+                      className="inline-block tabular-nums"
+                      willChange
+                      format={{ maximumFractionDigits: 0 }}
+                    />{" "}
+                    assig
+                  </span>
+                  <span>
+                    <SpringNumberFlow
+                      value={getStoresForType("Interventie")}
+                      className="inline-block tabular-nums"
+                      willChange
+                      format={{ maximumFractionDigits: 0 }}
+                    />{" "}
+                    stores
+                  </span>
+                </div>
+              </MotionLink>
 
-            {/* Second card - Optimizare - with orange border */}
-            <Link
-              href="/dashboard/type?type=Optimizare"
-              className="rounded-lg border-l-4 border-l-orange-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors"
-            >
-              <h3 className="text-sm font-medium">Optimizare</h3>
-              <p className="text-2xl font-bold">{getHoursForType("Optimizare")}h</p>
-              <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                <span>{getAssignmentsForType("Optimizare")} assig</span>
-                <span>{getStoresForType("Optimizare")} stores</span>
-              </div>
-            </Link>
+              {/* Optimizare */}
+              <MotionLink
+                href="/dashboard/type?type=Optimizare"
+                className="rounded-lg border-l-4 border-l-orange-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors duration-200"
+                whileHover={{
+                  scale: 1.02,
+                  transition: { duration: 0.2, ease: "easeOut" },
+                }}
+                whileTap={{
+                  scale: 0.98,
+                  transition: { duration: 0.1, ease: "easeOut" },
+                }}
+                layout
+                onClick={(e) => {
+                  e.preventDefault()
+                  cycleAnimation()
+                  setTimeout(() => {
+                    window.location.href = "/dashboard/type?type=Optimizare"
+                  }, 200)
+                }}
+              >
+                <h3 className="text-sm font-medium">Optimizare</h3>
+                <p className="text-2xl font-bold">
+                  <SpringNumberFlow
+                    value={getHoursForType("Optimizare")}
+                    suffix="h"
+                    className="inline-block tabular-nums"
+                    willChange
+                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                  />
+                </p>
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>
+                    <SpringNumberFlow
+                      value={getAssignmentsForType("Optimizare")}
+                      className="inline-block tabular-nums"
+                      willChange
+                      format={{ maximumFractionDigits: 0 }}
+                    />{" "}
+                    assig
+                  </span>
+                  <span>
+                    <SpringNumberFlow
+                      value={getStoresForType("Optimizare")}
+                      className="inline-block tabular-nums"
+                      willChange
+                      format={{ maximumFractionDigits: 0 }}
+                    />{" "}
+                    stores
+                  </span>
+                </div>
+              </MotionLink>
 
-            {/* Third card - Deschidere */}
-            <Link
-              href="/dashboard/type?type=Deschidere"
-              className="rounded-lg border-l-4 border-l-green-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors"
-            >
-              <h3 className="text-sm font-medium">Deschidere</h3>
-              <p className="text-2xl font-bold">{getHoursForType("Deschidere")}h</p>
-              <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                <span>{getAssignmentsForType("Deschidere")} assig</span>
-                <span>{getStoresForType("Deschidere")} stores</span>
-              </div>
-              {/* Remove the store IDs display */}
-            </Link>
-          </div>
+              {/* Deschidere */}
+              <MotionLink
+                href="/dashboard/type?type=Deschidere"
+                className="rounded-lg border-l-4 border-l-green-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors duration-200"
+                whileHover={{
+                  scale: 1.02,
+                  transition: { duration: 0.2, ease: "easeOut" },
+                }}
+                whileTap={{
+                  scale: 0.98,
+                  transition: { duration: 0.1, ease: "easeOut" },
+                }}
+                layout
+                onClick={(e) => {
+                  e.preventDefault()
+                  cycleAnimation()
+                  setTimeout(() => {
+                    window.location.href = "/dashboard/type?type=Deschidere"
+                  }, 200)
+                }}
+              >
+                <h3 className="text-sm font-medium">Deschidere</h3>
+                <p className="text-2xl font-bold">
+                  <SpringNumberFlow
+                    value={getHoursForType("Deschidere")}
+                    suffix="h"
+                    className="inline-block tabular-nums"
+                    willChange
+                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                  />
+                </p>
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>
+                    <SpringNumberFlow
+                      value={getAssignmentsForType("Deschidere")}
+                      className="inline-block tabular-nums"
+                      willChange
+                      format={{ maximumFractionDigits: 0 }}
+                    />{" "}
+                    assig
+                  </span>
+                  <span>
+                    <SpringNumberFlow
+                      value={getStoresForType("Deschidere")}
+                      className="inline-block tabular-nums"
+                      willChange
+                      format={{ maximumFractionDigits: 0 }}
+                    />{" "}
+                    stores
+                  </span>
+                </div>
+              </MotionLink>
+            </motion.div>
+          </MotionConfig>
         )}
       </CardContent>
     </Card>
