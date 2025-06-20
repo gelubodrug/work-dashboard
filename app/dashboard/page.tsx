@@ -19,6 +19,7 @@ import {
 } from "../actions/work-logs"
 import { cn } from "@/lib/utils"
 import { Filter } from "@/components/icons/filter"
+import { AlertTriangle } from "lucide-react"
 
 export default function DashboardPage() {
   const [dateRange, setDateRange] = useState({
@@ -114,25 +115,25 @@ export default function DashboardPage() {
     const now = new Date()
     let from, to
     switch (key) {
-      case "this-week":
-        from = startOfWeek(now)
-        to = endOfWeek(now)
+      case "last-12-months":
+        from = startOfMonth(subMonths(now, 12))
+        to = endOfMonth(now)
         break
-      case "this-month":
-        from = startOfMonth(now)
+      case "last-6-months":
+        from = startOfMonth(subMonths(now, 6))
         to = endOfMonth(now)
         break
       case "last-month":
         from = startOfMonth(subMonths(now, 1))
         to = endOfMonth(subMonths(now, 1))
         break
-      case "last-6-months":
-        from = startOfMonth(subMonths(now, 6))
+      case "this-month":
+        from = startOfMonth(now)
         to = endOfMonth(now)
         break
-      case "last-12-months":
-        from = startOfMonth(subMonths(now, 12))
-        to = endOfMonth(now)
+      case "this-week":
+        from = startOfWeek(now)
+        to = endOfWeek(now)
         break
       default:
         from = startOfMonth(now)
@@ -175,55 +176,65 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="space-y-4 max-w-7xl mx-auto">
-        <div className="flex flex-col gap-4 max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <div className="flex items-center">
-            <DateRangeFilters />
+      {topWorkers.length === 0 && topRiders.length === 0 && workDistribution.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <AlertTriangle className="h-16 w-16 text-orange-500" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Pagina nu este disponibilă</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            Această pagină nu mai este accesibilă. Vă rugăm să utilizați meniul de navigare.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4 max-w-7xl mx-auto">
+          <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+            <div className="flex items-center">
+              <DateRangeFilters />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 max-w-3xl mx-auto gap-4">
+            {/* 1. Work Distribution */}
+            <SmallCard
+              title="Work Distribution"
+              description={`Assignment types - ${formatDateRange()}`}
+              customContent={<WorkDistribution distribution={workDistribution} />}
+            />
+
+            {/* 2. Combined Top Workers and Top Riders with tabs */}
+            <Card className="col-span-1 md:col-span-1">
+              <CardHeader className="pb-2">
+                <div className="space-y-2">
+                  <CardTitle className="text-sm font-medium">
+                    Team Performance
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">- {formatDateRange()}</span>
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                <Tabs defaultValue="workers" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="workers">Top Workers</TabsTrigger>
+                    <TabsTrigger value="riders">Top Riders</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="workers" className="mt-0">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-semibold">Top Workers by Hours</h2>
+                    </div>
+                    <TopWorkers workers={topWorkers} />
+                  </TabsContent>
+                  <TabsContent value="riders" className="mt-0">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-semibold">Top Riders by Kilometers</h2>
+                    </div>
+                    <TopRiders riders={topRiders} />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 max-w-3xl mx-auto gap-4">
-          {/* 1. Work Distribution */}
-          <SmallCard
-            title="Work Distribution"
-            description={`Assignment types - ${formatDateRange()}`}
-            customContent={<WorkDistribution distribution={workDistribution} />}
-          />
-
-          {/* 2. Combined Top Workers and Top Riders with tabs */}
-          <Card className="col-span-1 md:col-span-1">
-            <CardHeader className="pb-2">
-              <div className="space-y-2">
-                <CardTitle className="text-sm font-medium">
-                  Team Performance
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">- {formatDateRange()}</span>
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4">
-              <Tabs defaultValue="workers" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="workers">Top Workers</TabsTrigger>
-                  <TabsTrigger value="riders">Top Riders</TabsTrigger>
-                </TabsList>
-                <TabsContent value="workers" className="mt-0">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Top Workers by Hours</h2>
-                  </div>
-                  <TopWorkers workers={topWorkers} />
-                </TabsContent>
-                <TabsContent value="riders" className="mt-0">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Top Riders by Kilometers</h2>
-                  </div>
-                  <TopRiders riders={topRiders} />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      )}
     </AppShell>
   )
 }

@@ -148,7 +148,7 @@ export function AppShell({ children }: AppShellProps) {
     // Start timer for long press (4 seconds)
     dashboardLongPressTimer.current = setTimeout(() => {
       setIsDashboardLongPress(true)
-      router.push("/dashboard")
+      router.push("/internal-analytics-v2")
     }, 4000) // 4 seconds for long press
   }
 
