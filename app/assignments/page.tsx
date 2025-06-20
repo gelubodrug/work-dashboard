@@ -611,6 +611,7 @@ export default function AssignmentsPage() {
                           {/* Route Info and Actions */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                              {/* COMMENTED OUT: Driving time and KM blue pills - details available on route page
                               {assignment.km &&
                               assignment.driving_time &&
                               assignment.km !== "0" &&
@@ -626,17 +627,18 @@ export default function AssignmentsPage() {
                                   </div>
                                 </>
                               ) : (
-                                <AssignmentKmCell
-                                  assignmentId={assignment.id}
-                                  km={assignment.km}
-                                  drivingTime={assignment.driving_time}
-                                  onRecalculate={handleRecalculateDistance}
-                                  isRecalculating={isRecalculating && selectedAssignmentId === assignment.id}
-                                  recalculationResult={
-                                    selectedAssignmentId === assignment.id ? recalculationResult : null
-                                  }
-                                />
-                              )}
+                              */}
+                              <AssignmentKmCell
+                                assignmentId={assignment.id}
+                                km={assignment.km}
+                                drivingTime={assignment.driving_time}
+                                onRecalculate={handleRecalculateDistance}
+                                isRecalculating={isRecalculating && selectedAssignmentId === assignment.id}
+                                recalculationResult={
+                                  selectedAssignmentId === assignment.id ? recalculationResult : null
+                                }
+                              />
+                              {/* )} */}
                             </div>
 
                             <div className="flex gap-2 items-center">
@@ -816,6 +818,7 @@ export default function AssignmentsPage() {
                           {/* Route Info and Actions */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                              {/* COMMENTED OUT: Driving time and KM blue pills - details available on route page
                               {assignment.km && assignment.driving_time ? (
                                 <>
                                   <div className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center text-xs">
@@ -828,17 +831,18 @@ export default function AssignmentsPage() {
                                   </div>
                                 </>
                               ) : (
-                                <AssignmentKmCell
-                                  assignmentId={assignment.id}
-                                  km={assignment.km}
-                                  drivingTime={assignment.driving_time}
-                                  onRecalculate={handleRecalculateDistance}
-                                  isRecalculating={isRecalculating && selectedAssignmentId === assignment.id}
-                                  recalculationResult={
-                                    selectedAssignmentId === assignment.id ? recalculationResult : null
-                                  }
-                                />
-                              )}
+                              */}
+                              <AssignmentKmCell
+                                assignmentId={assignment.id}
+                                km={assignment.km}
+                                drivingTime={assignment.driving_time}
+                                onRecalculate={handleRecalculateDistance}
+                                isRecalculating={isRecalculating && selectedAssignmentId === assignment.id}
+                                recalculationResult={
+                                  selectedAssignmentId === assignment.id ? recalculationResult : null
+                                }
+                              />
+                              {/* )} */}
                             </div>
 
                             <div className="flex gap-2 items-center">

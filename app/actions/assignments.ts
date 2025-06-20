@@ -107,12 +107,20 @@ export async function getAssignments(
     // Filter by completion status
     if (options?.onlyCompleted) {
       whereClause.push(`status = 'Finalizat'`)
+
+      // Add date filter for completed assignments - only show last 7 days
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+      whereClause.push(`completion_date >= $${values.length + 1}`)
+      values.push(oneWeekAgo.toISOString())
+
+      console.log(`🗓️ [ASSIGNMENTS] Filtering completed assignments from: ${oneWeekAgo.toISOString()}`)
     } else {
       // If not specifically requesting completed assignments, get active ones
       whereClause.push(`status != 'Finalizat'`)
     }
 
-    // Filter by date range if provided
+    // Filter by date range if provided (this is additional to the completed filter)
     if (startDate && endDate) {
       whereClause.push(`start_date >= $${values.length + 1} AND start_date <= $${values.length + 2}`)
       values.push(startDate.toISOString(), endDate.toISOString())
@@ -121,6 +129,13 @@ export async function getAssignments(
     // Add WHERE clause if we have conditions
     if (whereClause.length > 0) {
       queryText += ` WHERE ${whereClause.join(" AND ")}`
+    }
+
+    // Order by completion_date for completed assignments, start_date for others
+    if (options?.onlyCompleted) {
+      queryText += ` ORDER BY completion_date DESC`
+    } else {
+      queryText += ` ORDER BY start_date DESC`
     }
 
     console.log(`🚗 [VEHICLE-TRACKING] Executing query: ${queryText} with ${values.length} parameters`)

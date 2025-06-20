@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "@/components/ui/use-toast"
-import { AlertCircle, Clock, Loader2, MapPin, Plus, RefreshCw, Search, User, Users } from "lucide-react"
+import { AlertCircle, Loader2, MapPin, Plus, RefreshCw, Search, User, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UserAvatar } from "@/components/user-avatar"
 import { formatDistanceToNow, parseISO, format } from "date-fns"
@@ -289,17 +289,6 @@ export default function UsersPage() {
                             </Badge>
                           </div>
                         </div>
-
-                        {/* User Details */}
-                        <div className="grid grid-cols-1 gap-2 mt-2">
-                          {user.last_completion_date && (
-                            <div className="text-sm flex items-center">
-                              <Clock className="h-4 w-4 text-gray-400 mr-1" />
-                              <span className="text-gray-500">Liber din:</span>{" "}
-                              {formatTimeAgo(user.last_completion_date)}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </CardContent>
                     {/* Update the button style and remove the w-full class */}
@@ -364,13 +353,6 @@ export default function UsersPage() {
                             <div className="text-sm">
                               <span className="text-gray-500">Deplasare curentă:</span>{" "}
                               <Badge className="bg-blue-50 text-blue-600">{user.current_assignment}</Badge>
-                            </div>
-                          )}
-                          {user.current_start_date && (
-                            <div className="text-sm flex items-center">
-                              <Clock className="h-4 w-4 text-gray-400 mr-1" />
-                              <span className="text-gray-500">În deplasare de:</span>{" "}
-                              {formatTimeAgo(user.current_start_date)}
                             </div>
                           )}
                         </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Clock, Route, RefreshCw } from "lucide-react"
+import { Route, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface AssignmentKmCellProps {
@@ -81,9 +81,12 @@ export function AssignmentKmCell({
     )
   }
 
+  // COMMENTED OUT: Blue pills showing driving time and km
+  // These details are available on the individual route page
   // Normal state - show km and driving time
   return (
     <div className="flex items-center">
+      {/* COMMENTED OUT: Blue pills display - available on route page instead
       {km && drivingTime ? (
         <div className="flex items-center gap-2">
           <div className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center text-xs">
@@ -100,6 +103,12 @@ export function AssignmentKmCell({
       ) : (
         <span className="ml-1 text-xs text-amber-600 font-medium">Not calculated</span>
       )}
+      */}
+
+      {/* Show nothing when route is calculated - details available via menu "Calculate Route" */}
+      {km && drivingTime ? null : <span className="ml-1 text-xs text-amber-600 font-medium">Not calculated</span>}
+
+      {/* REMOVED: Recalculate button - use "Calculate Route" from dropdown menu instead
       {onRecalculate && (
         <Button
           variant="ghost"
@@ -111,6 +120,7 @@ export function AssignmentKmCell({
           <RefreshCw className="h-3 w-3" />
         </Button>
       )}
+      */}
     </div>
   )
 }
