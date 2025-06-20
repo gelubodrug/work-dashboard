@@ -292,10 +292,6 @@ export default function UsersPage() {
 
                         {/* User Details */}
                         <div className="grid grid-cols-1 gap-2 mt-2">
-                          <div className="text-sm">
-                            <span className="text-gray-500">Total ore luna curentă:</span>{" "}
-                            {user.current_month_hours || 0} h
-                          </div>
                           {user.last_completion_date && (
                             <div className="text-sm flex items-center">
                               <Clock className="h-4 w-4 text-gray-400 mr-1" />
@@ -364,10 +360,6 @@ export default function UsersPage() {
 
                         {/* User Details */}
                         <div className="grid grid-cols-1 gap-2 mt-2">
-                          <div className="text-sm">
-                            <span className="text-gray-500">Total ore luna curentă:</span>{" "}
-                            {user.current_month_hours || 0} h
-                          </div>
                           {user.current_assignment && (
                             <div className="text-sm">
                               <span className="text-gray-500">Deplasare curentă:</span>{" "}
