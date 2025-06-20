@@ -102,6 +102,10 @@ export function AppShell({ children }: AppShellProps) {
     return () => window.removeEventListener("scroll", scrollListener)
   }, [lastScrollY])
 
+  // Add after existing state declarations
+  const [isDashboardLongPress, setIsDashboardLongPress] = useState(false)
+  const dashboardLongPressTimer = useRef<NodeJS.Timeout | null>(null)
+
   const handleRouteMouseDown = () => {
     // Start timer for long press
     longPressTimer.current = setTimeout(() => {
@@ -139,6 +143,35 @@ export function AppShell({ children }: AppShellProps) {
     }
   }
 
+  const handleDashboardMouseDown = () => {
+    setIsDashboardLongPress(false)
+    // Start timer for long press (4 seconds)
+    dashboardLongPressTimer.current = setTimeout(() => {
+      setIsDashboardLongPress(true)
+      router.push("/dashboard")
+    }, 4000) // 4 seconds for long press
+  }
+
+  const handleDashboardMouseUp = () => {
+    // Clear the timer if mouse is released before long press threshold
+    if (dashboardLongPressTimer.current) {
+      clearTimeout(dashboardLongPressTimer.current)
+      dashboardLongPressTimer.current = null
+    }
+  }
+
+  const handleDashboardClick = (e: React.MouseEvent) => {
+    // If it was a long press, don't navigate to error page
+    if (isDashboardLongPress) {
+      setIsDashboardLongPress(false)
+      return
+    }
+
+    // Regular click - go to error page
+    e.preventDefault()
+    router.push("/dashboard-error")
+  }
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -147,6 +180,9 @@ export function AppShell({ children }: AppShellProps) {
       }
       if (clickTimer.current) {
         clearTimeout(clickTimer.current)
+      }
+      if (dashboardLongPressTimer.current) {
+        clearTimeout(dashboardLongPressTimer.current)
       }
     }
   }, [])
@@ -192,13 +228,18 @@ export function AppShell({ children }: AppShellProps) {
         >
           <div className="container mx-auto px-4">
             <div className="flex justify-around py-2">
-              <Link
-                href="/dashboard"
-                className="flex flex-col items-center p-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              <div
+                className="flex flex-col items-center p-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white cursor-pointer"
+                onMouseDown={handleDashboardMouseDown}
+                onMouseUp={handleDashboardMouseUp}
+                onMouseLeave={handleDashboardMouseUp}
+                onTouchStart={handleDashboardMouseDown}
+                onTouchEnd={handleDashboardMouseUp}
+                onClick={handleDashboardClick}
               >
                 <Home className="h-6 w-6" strokeWidth={1.5} />
                 <span className="text-xs mt-1">Dashboard</span>
-              </Link>
+              </div>
               <Link
                 href="/users"
                 className="flex flex-col items-center p-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
