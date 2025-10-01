@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Loader } from "@googlemaps/js-api-loader"
 
 interface MapProps {
   segments: any[]
@@ -10,15 +9,23 @@ interface MapProps {
   isVehicleMap?: boolean
 }
 
+// Declare google as a global variable
+declare global {
+  interface Window {
+    google: any
+  }
+}
+
 export default function GoogleMapRoute({ segments, polyline, height = "400px", isVehicleMap = false }: MapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<google.maps.Map | null>(null)
-  const markersRef = useRef<google.maps.Marker[]>([])
-  const infoWindowsRef = useRef<google.maps.InfoWindow[]>([])
-  const labelMarkersRef = useRef<google.maps.Marker[]>([])
+  const mapInstanceRef = useRef<any>(null)
+  const markersRef = useRef<any[]>([])
+  const infoWindowsRef = useRef<any[]>([])
+  const labelMarkersRef = useRef<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mapInitialized, setMapInitialized] = useState(false)
+  const scriptLoadedRef = useRef(false)
 
   // Clean up function to remove markers and info windows
   const cleanupMap = () => {
@@ -41,6 +48,46 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
     }
   }
 
+  // Load Google Maps script
+  const loadGoogleMapsScript = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // Check if script is already loaded
+      if (window.google && window.google.maps) {
+        scriptLoadedRef.current = true
+        resolve()
+        return
+      }
+
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
+      if (existingScript) {
+        existingScript.addEventListener("load", () => {
+          scriptLoadedRef.current = true
+          resolve()
+        })
+        return
+      }
+
+      // Create and load the script
+      const script = document.createElement("script")
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API || ""
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`
+      script.async = true
+      script.defer = true
+
+      script.onload = () => {
+        scriptLoadedRef.current = true
+        resolve()
+      }
+
+      script.onerror = () => {
+        reject(new Error("Failed to load Google Maps script"))
+      }
+
+      document.head.appendChild(script)
+    })
+  }
+
   useEffect(() => {
     if (!segments || segments.length === 0) return
 
@@ -55,17 +102,10 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
           return
         }
 
-        const loader = new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API || "",
-          version: "weekly",
-          libraries: ["places", "geometry"],
-        })
-
-        // Import the Map class
-        const { Map } = await loader.importLibrary("maps")
-
-        // Get the google object
-        const google = await loader.importLibrary("core")
+        // Load Google Maps script if not already loaded
+        if (!scriptLoadedRef.current) {
+          await loadGoogleMapsScript()
+        }
 
         // Ensure mapRef.current is available
         if (!mapRef.current) {
@@ -75,33 +115,28 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
           return
         }
 
-        // Create the map with a slight delay to ensure DOM is ready
-        setTimeout(() => {
-          try {
-            if (!mapRef.current) {
-              throw new Error("Map container element not found after delay")
-            }
+        // Wait a bit for the DOM to be ready
+        await new Promise((resolve) => setTimeout(resolve, 100))
 
-            const mapInstance = new Map(mapRef.current, {
-              center: { lat: 44.4268, lng: 26.1025 }, // Default to Bucharest
-              zoom: 9,
-              mapTypeId: "roadmap",
-              mapTypeControl: true,
-              streetViewControl: false,
-              fullscreenControl: true,
-            })
+        if (!mapRef.current) {
+          throw new Error("Map container element not found after delay")
+        }
 
-            mapInstanceRef.current = mapInstance
-            setMapInitialized(true)
+        // Create the map instance
+        const mapInstance = new window.google.maps.Map(mapRef.current, {
+          center: { lat: 44.4268, lng: 26.1025 }, // Default to Bucharest
+          zoom: 9,
+          mapTypeId: "roadmap",
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
+        })
 
-            // Add markers and routes
-            updateMapMarkers()
-          } catch (err) {
-            console.error("Error creating map:", err)
-            setError(`Error creating map: ${err instanceof Error ? err.message : String(err)}`)
-            setLoading(false)
-          }
-        }, 100)
+        mapInstanceRef.current = mapInstance
+        setMapInitialized(true)
+
+        // Add markers and routes
+        updateMapMarkers()
       } catch (err) {
         console.error("Error initializing Google Maps:", err)
         setError(`Failed to load Google Maps: ${err instanceof Error ? err.message : String(err)}`)
@@ -125,7 +160,7 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
 
       if (isVehicleMap) {
         // Vehicle map display logic
-        segments.forEach((segment, index) => {
+        segments.forEach((segment) => {
           const position = {
             lat: segment.startLatitude || 0,
             lng: segment.startLongitude || 0,
@@ -140,7 +175,7 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
               strokeWeight: 1,
               strokeColor: "#FFFFFF",
               scale: 6,
-              rotation: segment.heading || 0, // Use the heading for rotation
+              rotation: segment.heading || 0,
             }
 
             const marker = new google.maps.Marker({
@@ -148,28 +183,25 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
               map: mapInstance,
               title: segment.startName,
               icon: vehicleIcon,
-              zIndex: 2, // Higher zIndex to ensure the arrow is above the label
+              zIndex: 2,
             })
 
             // Add a separate marker for the driver name label
             if (segment.driverName) {
-              // Get the first name only for shorter labels
               const firstName = segment.driverName.split(" ")[0]
 
-              // Create a label marker slightly offset from the vehicle
               const labelMarker = new google.maps.Marker({
                 position,
                 map: mapInstance,
                 icon: {
                   path: google.maps.SymbolPath.CIRCLE,
-                  scale: 0, // Invisible marker
+                  scale: 0,
                 },
                 label: {
                   text: firstName,
                   color: segment.ignitionState === "ON" ? "#22c55e" : "#ef4444",
                   fontWeight: "bold",
                   fontSize: "12px",
-                  className: "vehicle-label",
                 },
                 zIndex: 1,
               })
@@ -236,7 +268,6 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
             })
 
             marker.addListener("click", () => {
-              // Close all other info windows first
               infoWindowsRef.current.forEach((window) => window.close())
               infoWindow.open(mapInstance, marker)
             })
@@ -249,15 +280,6 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
       } else {
         // Original route display logic for non-vehicle maps
         const directionsService = new google.maps.DirectionsService()
-        const directionsRenderer = new google.maps.DirectionsRenderer({
-          map: mapInstance,
-          suppressMarkers: true, // We'll add our own markers
-          polylineOptions: {
-            strokeColor: "#4285F4",
-            strokeOpacity: 1.0,
-            strokeWeight: 4,
-          },
-        })
 
         // Add markers for each segment
         segments.forEach((segment, index) => {
@@ -275,7 +297,7 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
                 title: segment.startName || `Point ${index}`,
                 label: {
                   text: segment.isHQ && segment.startStoreId === "HQ" ? "HQ" : (index + 1).toString(),
-                  color: segment.isHQ && segment.startStoreId === "HQ" ? "#FFFFFF" : "#FFFFFF",
+                  color: "#FFFFFF",
                 },
                 icon: {
                   path: google.maps.SymbolPath.CIRCLE,
@@ -287,7 +309,6 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
                 },
               })
 
-              // Add info window
               const infoWindow = new google.maps.InfoWindow({
                 content: `<div><strong>${segment.startName || "Point"}</strong><br>${segment.startAddress || ""}</div>`,
               })
@@ -328,7 +349,6 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
                 },
               })
 
-              // Add info window
               const infoWindow = new google.maps.InfoWindow({
                 content: `<div><strong>${segment.endName || "End"}</strong><br>${segment.endAddress || ""}</div>`,
               })
@@ -344,79 +364,73 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
           }
         })
 
-        // Calculate and display routes between points using Directions API
+        // Calculate and display routes between points
         const calculateRoutes = async () => {
-          const allRoutePromises = []
-
           for (let i = 0; i < segments.length; i++) {
             const segment = segments[i]
 
             if (segment.startLatitude && segment.startLongitude && segment.endLatitude && segment.endLongitude) {
-              const routePromise = new Promise<void>((resolve) => {
-                directionsService.route(
-                  {
-                    origin: { lat: segment.startLatitude, lng: segment.startLongitude },
-                    destination: { lat: segment.endLatitude, lng: segment.endLongitude },
-                    travelMode: google.maps.TravelMode.DRIVING,
-                  },
-                  (result, status) => {
-                    if (status === google.maps.DirectionsStatus.OK && result) {
-                      // Create a new renderer for each route
-                      const segmentRenderer = new google.maps.DirectionsRenderer({
-                        map: mapInstance,
-                        directions: result,
-                        suppressMarkers: true,
-                        polylineOptions: {
-                          strokeColor: segment.isHQ ? "#4285F4" : "#DB4437",
-                          strokeOpacity: 1.0,
-                          strokeWeight: 4,
-                        },
-                        preserveViewport: true, // Don't change the map viewport
-                      })
-
-                      // Extend bounds with all route points
-                      if (result.routes && result.routes.length > 0 && result.routes[0].overview_path) {
-                        result.routes[0].overview_path.forEach((point) => {
-                          bounds.extend(point)
-                        })
+              try {
+                const result = await new Promise((resolve, reject) => {
+                  directionsService.route(
+                    {
+                      origin: { lat: segment.startLatitude, lng: segment.startLongitude },
+                      destination: { lat: segment.endLatitude, lng: segment.endLongitude },
+                      travelMode: google.maps.TravelMode.DRIVING,
+                    },
+                    (result: any, status: any) => {
+                      if (status === google.maps.DirectionsStatus.OK) {
+                        resolve(result)
+                      } else {
+                        reject(new Error(`Directions request failed: ${status}`))
                       }
-                    } else {
-                      console.error(`Error calculating route for segment ${i}:`, status)
+                    },
+                  )
+                })
 
-                      // Fallback to direct line if directions fail
-                      const routePath = new google.maps.Polyline({
-                        path: [
-                          { lat: segment.startLatitude, lng: segment.startLongitude },
-                          { lat: segment.endLatitude, lng: segment.endLongitude },
-                        ],
-                        geodesic: true,
-                        strokeColor: segment.isHQ ? "#4285F4" : "#DB4437",
-                        strokeOpacity: 0.7,
-                        strokeWeight: 3,
-                        strokePattern: [google.maps.SymbolPath.DASH, { weight: 2, length: 2 }],
-                      })
-
-                      routePath.setMap(mapInstance)
-                    }
-                    resolve()
+                // Create a renderer for this route
+                new google.maps.DirectionsRenderer({
+                  map: mapInstance,
+                  directions: result,
+                  suppressMarkers: true,
+                  polylineOptions: {
+                    strokeColor: segment.isHQ ? "#4285F4" : "#DB4437",
+                    strokeOpacity: 1.0,
+                    strokeWeight: 4,
                   },
-                )
-              })
+                  preserveViewport: true,
+                })
 
-              allRoutePromises.push(routePromise)
+                // Extend bounds
+                if ((result as any).routes?.[0]?.overview_path) {
+                  ;(result as any).routes[0].overview_path.forEach((point: any) => {
+                    bounds.extend(point)
+                  })
+                }
+              } catch (error) {
+                console.error(`Error calculating route for segment ${i}:`, error)
+
+                // Fallback to direct line
+                new google.maps.Polyline({
+                  path: [
+                    { lat: segment.startLatitude, lng: segment.startLongitude },
+                    { lat: segment.endLatitude, lng: segment.endLongitude },
+                  ],
+                  geodesic: true,
+                  strokeColor: segment.isHQ ? "#4285F4" : "#DB4437",
+                  strokeOpacity: 0.7,
+                  strokeWeight: 3,
+                  map: mapInstance,
+                })
+              }
             }
           }
 
-          // Wait for all routes to be calculated
-          await Promise.all(allRoutePromises)
-
-          // Now fit bounds after all routes are calculated and added to the map
+          // Fit bounds after all routes are calculated
           if (!bounds.isEmpty()) {
-            // Add some padding to the bounds
             mapInstance.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 })
 
-            // Ensure we're not zoomed in too far if there's only one point
-            const zoomListener = google.maps.event.addListenerOnce(mapInstance, "idle", () => {
+            window.google.maps.event.addListenerOnce(mapInstance, "idle", () => {
               if (mapInstance.getZoom() > 15) {
                 mapInstance.setZoom(15)
               }
@@ -431,8 +445,7 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
       if (!bounds.isEmpty()) {
         mapInstance.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 })
 
-        // Ensure we're not zoomed in too far if there's only one point
-        google.maps.event.addListenerOnce(mapInstance, "idle", () => {
+        window.google.maps.event.addListenerOnce(mapInstance, "idle", () => {
           if (mapInstance.getZoom() > 15) {
             mapInstance.setZoom(15)
           }
@@ -444,7 +457,6 @@ export default function GoogleMapRoute({ segments, polyline, height = "400px", i
 
     initMap()
 
-    // Cleanup function
     return () => {
       cleanupMap()
     }

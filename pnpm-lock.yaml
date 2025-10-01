@@ -15,7 +15,7 @@ importers:
         specifier: latest
         version: 1.4.0
       '@googlemaps/js-api-loader':
-        specifier: latest
+        specifier: 2.0.1
         version: 2.0.1
       '@hookform/resolvers':
         specifier: ^3.9.1
@@ -137,6 +137,9 @@ importers:
       framer-motion:
         specifier: latest
         version: 12.23.22(@emotion/is-prop-valid@1.4.0)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
+      google-maps:
+        specifier: 4.3.3
+        version: 4.3.3
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
@@ -1257,6 +1260,10 @@ packages:
   '@types/google.maps@3.58.1':
     resolution: {integrity: sha512-X9QTSvGJ0nCfMzYOnaVs/k6/4L+7F5uCS+4iUmkLEls6J9S/Phv+m/i3mDeyc49ZBgwab3EFO1HEoBY7k98EGQ==}
 
+  '@types/googlemaps@3.43.3':
+    resolution: {integrity: sha512-ZWNoz/O8MPEpiajvj7QiqCY8tTLFNqNZ/a+s+zTV58wFVNAvvqV4bdGfnsjTb5Cs4V6wEsLrX8XRhmnyYJ2Tdg==}
+    deprecated: 'Types for the Google Maps browser API have moved to @types/google.maps. Note: these types are not for the googlemaps npm package, which is a Node API.'
+
   '@types/node@22.0.0':
     resolution: {integrity: sha512-VT7KSYudcPOzP5Q0wfbowyNLaVR8QWUdw+088uFWwfvpY6uCWaXpqV6ieLAu9WBcnTa7H4Z5RLK8I5t2FuOcqw==}
 
@@ -1565,6 +1572,9 @@ packages:
   glob@10.4.5:
     resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
     hasBin: true
+
+  google-maps@4.3.3:
+    resolution: {integrity: sha512-MQbEgBNQbGyV7mfS2tlFgW4EoGKLia24BvAl4a+kgsYWt4283kyPpaay/yKIsScQLr7nSUONaLNfOdMsCuJDEw==}
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
@@ -3268,6 +3278,8 @@ snapshots:
 
   '@types/google.maps@3.58.1': {}
 
+  '@types/googlemaps@3.43.3': {}
+
   '@types/node@22.0.0':
     dependencies:
       undici-types: 6.11.1
@@ -3564,6 +3576,10 @@ snapshots:
       minipass: 7.1.2
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
+
+  google-maps@4.3.3:
+    dependencies:
+      '@types/googlemaps': 3.43.3
 
   graceful-fs@4.2.11: {}
 

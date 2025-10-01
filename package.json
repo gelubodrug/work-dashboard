@@ -11,7 +11,7 @@
   "dependencies": {
     "@auth/core": "latest",
     "@emotion/is-prop-valid": "latest",
-    "@googlemaps/js-api-loader": "latest",
+    "@googlemaps/js-api-loader": "2.0.1",
     "@hookform/resolvers": "^3.9.1",
     "@neondatabase/serverless": "latest",
     "@number-flow/react": "latest",
@@ -52,6 +52,7 @@
     "date-fns": "latest",
     "embla-carousel-react": "8.5.1",
     "framer-motion": "latest",
+    "google-maps": "4.3.3",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "motion": "latest",
