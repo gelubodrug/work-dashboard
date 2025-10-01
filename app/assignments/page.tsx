@@ -35,7 +35,6 @@ import { ConfirmFinalizeDialog } from "@/components/confirm-finalize-dialog"
 import { RoutePointsDisplay } from "@/components/route-points-display"
 import { finalizeAssignmentWithTeam, manuallyCalculateRoute } from "@/app/actions/assignments"
 
-// Add these imports at the top with the other imports
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,10 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// Add this import at the top with the other imports
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
-
-// Add the import for the delete action at the top with other imports
 import { deleteAssignment } from "@/app/actions/delete-assignment"
 
 // License Plate Component
@@ -65,6 +61,8 @@ function TypeFilters({ activeFilter, setActiveFilter }) {
     { value: "Interventie", label: "Interventie" },
     { value: "Optimizare", label: "Optimizare" },
     { value: "Deschidere", label: "Deschidere" },
+    { value: "Froo", label: "Froo" },
+    { value: "BurgerKing", label: "BurgerKing" },
   ]
 
   return (
@@ -247,8 +245,11 @@ export default function AssignmentsPage() {
   }, [assignments, activeTab, searchTerm, activeFilter])
 
   const handleFinalize = async (assignment) => {
-    // If km is 0, redirect to route calculation page instead of showing finalization dialog
-    if (assignment.km === 0 || assignment.km === "0") {
+    // Allow Froo and BurgerKing to be finalized without km calculation
+    const skipKmValidation = assignment.type === "Froo" || assignment.type === "BurgerKing"
+
+    // If km is 0 and it's not a type that skips validation, redirect to route calculation page
+    if (!skipKmValidation && (assignment.km === 0 || assignment.km === "0")) {
       router.push(`/test/assignment-route?id=${assignment.id}`)
       return
     }
@@ -419,6 +420,10 @@ export default function AssignmentsPage() {
         return "bg-orange-100 text-orange-800 border-orange-200"
       case "Deschidere":
         return "bg-green-100 text-green-800 border-green-200"
+      case "Froo":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "BurgerKing":
+        return "bg-orange-100 text-orange-800 border-orange-200"
       default:
         return "bg-purple-100 text-purple-800 border-purple-200"
     }
@@ -478,7 +483,13 @@ export default function AssignmentsPage() {
               <TabsTrigger value="completed">Completed</TabsTrigger>
             </TabsList>
 
-            <Button variant="outline" size="sm" onClick={fetchAssignments} disabled={isLoading} className="h-8">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchAssignments}
+              disabled={isLoading}
+              className="h-8 bg-transparent"
+            >
               {isLoading ? (
                 <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1"></div>
               ) : (
@@ -611,23 +622,6 @@ export default function AssignmentsPage() {
                           {/* Route Info and Actions */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              {/* COMMENTED OUT: Driving time and KM blue pills - details available on route page
-                              {assignment.km &&
-                              assignment.driving_time &&
-                              assignment.km !== "0" &&
-                              assignment.driving_time !== "0" ? (
-                                <>
-                                  <div className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center text-xs">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    {formatDrivingTimeToHours(assignment.driving_time)}
-                                  </div>
-                                  <div className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center text-xs">
-                                    <Route className="h-3 w-3 mr-1" />
-                                    {formatKm(assignment.km)} km
-                                  </div>
-                                </>
-                              ) : (
-                              */}
                               <AssignmentKmCell
                                 assignmentId={assignment.id}
                                 km={assignment.km}
@@ -638,18 +632,13 @@ export default function AssignmentsPage() {
                                   selectedAssignmentId === assignment.id ? recalculationResult : null
                                 }
                               />
-                              {/* )} */}
                             </div>
 
                             <div className="flex gap-2 items-center">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  setSelectedAssignmentId(assignment.id)
-                                  setSelectedAssignment(assignment)
-                                  setIsConfirmFinalizeOpen(true)
-                                }}
+                                onClick={() => handleFinalize(assignment)}
                                 className="h-7 text-xs px-2"
                               >
                                 <CheckCircle className="h-3 w-3 mr-1" />
@@ -818,20 +807,6 @@ export default function AssignmentsPage() {
                           {/* Route Info and Actions */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              {/* COMMENTED OUT: Driving time and KM blue pills - details available on route page
-                              {assignment.km && assignment.driving_time ? (
-                                <>
-                                  <div className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center text-xs">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    {formatDrivingTimeToHours(assignment.driving_time)}
-                                  </div>
-                                  <div className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center text-xs">
-                                    <Route className="h-3 w-3 mr-1" />
-                                    {formatKm(assignment.km)} km
-                                  </div>
-                                </>
-                              ) : (
-                              */}
                               <AssignmentKmCell
                                 assignmentId={assignment.id}
                                 km={assignment.km}
@@ -842,7 +817,6 @@ export default function AssignmentsPage() {
                                   selectedAssignmentId === assignment.id ? recalculationResult : null
                                 }
                               />
-                              {/* )} */}
                             </div>
 
                             <div className="flex gap-2 items-center">
@@ -913,6 +887,7 @@ export default function AssignmentsPage() {
           km={selectedAssignment?.km || 0}
           realStartDate={selectedAssignment?.gps_start_date}
           realCompletionDate={selectedAssignment?.return_time}
+          assignmentType={selectedAssignment?.type}
         />
 
         {/* Delete confirmation dialog */}

@@ -97,6 +97,39 @@ export function WorkDistribution({ startDate, endDate, distribution }: WorkDistr
     return Math.round(baseValue + baseValue * variation)
   }
 
+  const cards = [
+    {
+      type: "Interventie",
+      title: "Interventie",
+      borderColor: "border-l-blue-500",
+      href: "/dashboard/type?type=Interventie",
+    },
+    {
+      type: "Optimizare",
+      title: "Optimizare",
+      borderColor: "border-l-orange-500",
+      href: "/dashboard/type?type=Optimizare",
+    },
+    {
+      type: "Deschidere",
+      title: "Deschidere",
+      borderColor: "border-l-green-500",
+      href: "/dashboard/type?type=Deschidere",
+    },
+    {
+      type: "Froo",
+      title: "Froo",
+      borderColor: "border-l-purple-500",
+      href: "/dashboard/type?type=Froo",
+    },
+    {
+      type: "BurgerKing",
+      title: "BurgerKing",
+      borderColor: "border-l-red-500",
+      href: "/dashboard/type?type=BurgerKing",
+    },
+  ]
+
   return (
     <Card className="col-span-1 md:col-span-2" ref={ref}>
       <CardContent className="p-4">
@@ -128,7 +161,7 @@ export function WorkDistribution({ startDate, endDate, distribution }: WorkDistr
             }}
           >
             <motion.div
-              className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg border-0 bg-transparent"
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 p-2 rounded-lg border-0 bg-transparent"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
@@ -137,165 +170,61 @@ export function WorkDistribution({ startDate, endDate, distribution }: WorkDistr
               }}
               layout
             >
-              {/* Interventie */}
-              <MotionLink
-                href="/dashboard/type?type=Interventie"
-                className="rounded-lg border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors duration-200"
-                whileHover={{
-                  scale: 1.02,
-                  transition: { duration: 0.2, ease: "easeOut" },
-                }}
-                whileTap={{
-                  scale: 0.98,
-                  transition: { duration: 0.1, ease: "easeOut" },
-                }}
-                layout
-                onClick={(e) => {
-                  e.preventDefault()
-                  cycleAnimation()
-                  // Navigate after animation
-                  setTimeout(() => {
-                    window.location.href = "/dashboard/type?type=Interventie"
-                  }, 200)
-                }}
-              >
-                <h3 className="text-sm font-medium">Interventie</h3>
-                <p className="text-2xl font-bold">
-                  <SpringNumberFlow
-                    value={getHoursForType("Interventie")}
-                    suffix="h"
-                    className="inline-block tabular-nums"
-                    willChange
-                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                  />
-                </p>
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>
+              {cards.map((card) => (
+                <MotionLink
+                  key={card.type}
+                  href={card.href}
+                  className={`rounded-lg border-l-4 ${card.borderColor} border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200`}
+                  whileHover={{
+                    scale: 1.02,
+                    transition: { duration: 0.2, ease: "easeOut" },
+                  }}
+                  whileTap={{
+                    scale: 0.98,
+                    transition: { duration: 0.1, ease: "easeOut" },
+                  }}
+                  layout
+                  onClick={(e) => {
+                    e.preventDefault()
+                    cycleAnimation()
+                    // Navigate after animation
+                    setTimeout(() => {
+                      window.location.href = card.href
+                    }, 200)
+                  }}
+                >
+                  <h3 className="text-sm font-medium">{card.title}</h3>
+                  <p className="text-2xl font-bold">
                     <SpringNumberFlow
-                      value={getAssignmentsForType("Interventie")}
+                      value={getHoursForType(card.type)}
+                      suffix="h"
                       className="inline-block tabular-nums"
                       willChange
-                      format={{ maximumFractionDigits: 0 }}
-                    />{" "}
-                    assig
-                  </span>
-                  <span>
-                    <SpringNumberFlow
-                      value={getStoresForType("Interventie")}
-                      className="inline-block tabular-nums"
-                      willChange
-                      format={{ maximumFractionDigits: 0 }}
-                    />{" "}
-                    stores
-                  </span>
-                </div>
-              </MotionLink>
-
-              {/* Optimizare */}
-              <MotionLink
-                href="/dashboard/type?type=Optimizare"
-                className="rounded-lg border-l-4 border-l-orange-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors duration-200"
-                whileHover={{
-                  scale: 1.02,
-                  transition: { duration: 0.2, ease: "easeOut" },
-                }}
-                whileTap={{
-                  scale: 0.98,
-                  transition: { duration: 0.1, ease: "easeOut" },
-                }}
-                layout
-                onClick={(e) => {
-                  e.preventDefault()
-                  cycleAnimation()
-                  setTimeout(() => {
-                    window.location.href = "/dashboard/type?type=Optimizare"
-                  }, 200)
-                }}
-              >
-                <h3 className="text-sm font-medium">Optimizare</h3>
-                <p className="text-2xl font-bold">
-                  <SpringNumberFlow
-                    value={getHoursForType("Optimizare")}
-                    suffix="h"
-                    className="inline-block tabular-nums"
-                    willChange
-                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                  />
-                </p>
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>
-                    <SpringNumberFlow
-                      value={getAssignmentsForType("Optimizare")}
-                      className="inline-block tabular-nums"
-                      willChange
-                      format={{ maximumFractionDigits: 0 }}
-                    />{" "}
-                    assig
-                  </span>
-                  <span>
-                    <SpringNumberFlow
-                      value={getStoresForType("Optimizare")}
-                      className="inline-block tabular-nums"
-                      willChange
-                      format={{ maximumFractionDigits: 0 }}
-                    />{" "}
-                    stores
-                  </span>
-                </div>
-              </MotionLink>
-
-              {/* Deschidere */}
-              <MotionLink
-                href="/dashboard/type?type=Deschidere"
-                className="rounded-lg border-l-4 border-l-green-500 border-t-0 border-r-0 border-b-0 bg-transparent p-4 hover:bg-gray-50 transition-colors duration-200"
-                whileHover={{
-                  scale: 1.02,
-                  transition: { duration: 0.2, ease: "easeOut" },
-                }}
-                whileTap={{
-                  scale: 0.98,
-                  transition: { duration: 0.1, ease: "easeOut" },
-                }}
-                layout
-                onClick={(e) => {
-                  e.preventDefault()
-                  cycleAnimation()
-                  setTimeout(() => {
-                    window.location.href = "/dashboard/type?type=Deschidere"
-                  }, 200)
-                }}
-              >
-                <h3 className="text-sm font-medium">Deschidere</h3>
-                <p className="text-2xl font-bold">
-                  <SpringNumberFlow
-                    value={getHoursForType("Deschidere")}
-                    suffix="h"
-                    className="inline-block tabular-nums"
-                    willChange
-                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                  />
-                </p>
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>
-                    <SpringNumberFlow
-                      value={getAssignmentsForType("Deschidere")}
-                      className="inline-block tabular-nums"
-                      willChange
-                      format={{ maximumFractionDigits: 0 }}
-                    />{" "}
-                    assig
-                  </span>
-                  <span>
-                    <SpringNumberFlow
-                      value={getStoresForType("Deschidere")}
-                      className="inline-block tabular-nums"
-                      willChange
-                      format={{ maximumFractionDigits: 0 }}
-                    />{" "}
-                    stores
-                  </span>
-                </div>
-              </MotionLink>
+                      format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                    />
+                  </p>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                    <span>
+                      <SpringNumberFlow
+                        value={getAssignmentsForType(card.type)}
+                        className="inline-block tabular-nums"
+                        willChange
+                        format={{ maximumFractionDigits: 0 }}
+                      />{" "}
+                      assig
+                    </span>
+                    <span>
+                      <SpringNumberFlow
+                        value={getStoresForType(card.type)}
+                        className="inline-block tabular-nums"
+                        willChange
+                        format={{ maximumFractionDigits: 0 }}
+                      />{" "}
+                      stores
+                    </span>
+                  </div>
+                </MotionLink>
+              ))}
             </motion.div>
           </MotionConfig>
         )}

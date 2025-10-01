@@ -328,49 +328,52 @@ export default function DeplasareFormPage() {
         return
       }
 
-      // Validate store selection or creation
-      if (!selectedStore && !isCreatingNewStore) {
-        setError("Trebuie să selectați un magazin existent sau să creați unul nou")
-        setIsSubmitting(false)
-        return
-      }
-
-      // If creating a new store, validate required fields
-      if (isCreatingNewStore) {
-        if (!storeNumber) {
-          setError("Numarul magazinului este obligatoriu pentru un magazin nou")
+      // Skip store validation for Froo and BurgerKing
+      if (!["Froo", "BurgerKing"].includes(type)) {
+        // Validate store selection or creation
+        if (!selectedStore && !isCreatingNewStore) {
+          setError("Trebuie să selectați un magazin existent sau să creați unul nou")
           setIsSubmitting(false)
           return
         }
 
-        if (!validateStoreNumber(storeNumber)) {
-          setError("Numarul magazinului format din 4 cifre")
-          setIsSubmitting(false)
-          return
-        }
+        // If creating a new store, validate required fields
+        if (isCreatingNewStore) {
+          if (!storeNumber) {
+            setError("Numarul magazinului este obligatoriu pentru un magazin nou")
+            setIsSubmitting(false)
+            return
+          }
 
-        if (!storeName) {
-          setError("Denumirea magazinului este obligatorie pentru un magazin nou")
-          setIsSubmitting(false)
-          return
-        }
+          if (!validateStoreNumber(storeNumber)) {
+            setError("Numarul magazinului format din 4 cifre")
+            setIsSubmitting(false)
+            return
+          }
 
-        if (!selectedCounty) {
-          setError("Județul este obligatoriu pentru un magazin nou")
-          setIsSubmitting(false)
-          return
-        }
+          if (!storeName) {
+            setError("Denumirea magazinului este obligatorie pentru un magazin nou")
+            setIsSubmitting(false)
+            return
+          }
 
-        if (!cityName) {
-          setError("Localitatea este obligatorie pentru un magazin nou")
-          setIsSubmitting(false)
-          return
-        }
+          if (!selectedCounty) {
+            setError("Județul este obligatoriu pentru un magazin nou")
+            setIsSubmitting(false)
+            return
+          }
 
-        if (!storeAddress) {
-          setError("Adresa: strada, numar este obligatorie pentru un magazin nou")
-          setIsSubmitting(false)
-          return
+          if (!cityName) {
+            setError("Localitatea este obligatorie pentru un magazin nou")
+            setIsSubmitting(false)
+            return
+          }
+
+          if (!storeAddress) {
+            setError("Adresa: strada, numar este obligatorie pentru un magazin nou")
+            setIsSubmitting(false)
+            return
+          }
         }
       }
 
@@ -395,13 +398,29 @@ export default function DeplasareFormPage() {
         // Continue with the submission even if validation fails
       }
 
-      // Get location data from selected store or new store fields
-      const countyValue = selectedStore ? selectedStore.county : selectedCounty
-      const cityValue = selectedStore ? selectedStore.city : cityName
-      const storeNumberValue = selectedStore ? selectedStore.store_id : storeNumber
+      // Get location data from selected store or new store fields or use default for Froo/BurgerKing
+      const countyValue = ["Froo", "BurgerKing"].includes(type)
+        ? "N/A"
+        : selectedStore
+          ? selectedStore.county
+          : selectedCounty
+
+      const cityValue = ["Froo", "BurgerKing"].includes(type)
+        ? type // Use the type name as the city for Froo/BurgerKing
+        : selectedStore
+          ? selectedStore.city
+          : cityName
+
+      const storeNumberValue = ["Froo", "BurgerKing"].includes(type)
+        ? null
+        : selectedStore
+          ? selectedStore.store_id
+          : storeNumber
 
       // Construct the location string
-      const formattedLocation = `${cityValue}, ${countyValue}${storeNumberValue ? ` (Nr. ${storeNumberValue})` : ""}`
+      const formattedLocation = ["Froo", "BurgerKing"].includes(type)
+        ? type // Just use the type name for Froo/BurgerKing
+        : `${cityValue}, ${countyValue}${storeNumberValue ? ` (Nr. ${storeNumberValue})` : ""}`
 
       // Use hardcoded Chitila coordinates
       const startLocationValue = "44.509892,25.9845856" // Hardcoded Chitila coordinates
@@ -518,11 +537,12 @@ export default function DeplasareFormPage() {
     type && // Ensure type is selected
     hasTeamMember &&
     carPlate &&
-    // For existing store
-    ((activeStoreTab === "existing" && selectedStore) ||
-      // For new store
+    // For Froo and BurgerKing, skip store validation
+    (["Froo", "BurgerKing"].includes(type) ||
+      // For other types, validate store selection
+      (activeStoreTab === "existing" && selectedStore) ||
       (activeStoreTab === "new" &&
-        isCreatingNewStore && // Make sure isCreatingNewStore is true
+        isCreatingNewStore &&
         storeNumber &&
         validateStoreNumber(storeNumber) &&
         selectedCounty &&
@@ -604,240 +624,279 @@ export default function DeplasareFormPage() {
                               Tip Deplasare <span className="text-red-500">*</span>
                             </Label>
                             <div className="flex flex-wrap gap-2 mt-1">
-                              {["Interventie", "Deschidere", "Optimizare"].map((option) => (
+                              {[
+                                { value: "Interventie", color: "blue" },
+                                { value: "Deschidere", color: "blue" },
+                                { value: "Optimizare", color: "blue" },
+                                { value: "Froo", color: "green", isNew: true },
+                                { value: "BurgerKing", color: "orange", isNew: true },
+                              ].map((option) => (
                                 <button
-                                  key={option}
+                                  key={option.value}
                                   type="button"
-                                  onClick={() => setType(option)}
+                                  onClick={() => {
+                                    setType(option.value)
+                                    // Auto-switch to team tab for Froo and BurgerKing
+                                    if (option.value === "Froo" || option.value === "BurgerKing") {
+                                      setActiveTab("team")
+                                    }
+                                  }}
                                   disabled={isSubmitting}
                                   className={cn(
-                                    "px-3 py-1.5 rounded-full transition-colors text-xs font-medium", // Made 20% smaller
-                                    type === option
-                                      ? "bg-blue-100 text-blue-700 border border-blue-300"
-                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200",
+                                    "px-3 py-1.5 rounded-full transition-colors text-xs font-medium",
+                                    // Selected state
+                                    type === option.value
+                                      ? option.color === "green"
+                                        ? "bg-green-600 text-white border border-green-700"
+                                        : option.color === "orange"
+                                          ? "bg-orange-600 text-white border border-orange-700"
+                                          : "bg-blue-600 text-white border border-blue-700"
+                                      : // Unselected state
+                                        option.color === "green"
+                                        ? "bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
+                                        : option.color === "orange"
+                                          ? "bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200"
+                                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300",
                                     isSubmitting && "opacity-50 cursor-not-allowed",
                                   )}
                                 >
-                                  {option}
+                                  {option.isNew && <span className="mr-1">✨</span>}
+                                  {option.value}
                                 </button>
                               ))}
                             </div>
                           </div>
 
-                          <div className="mt-4">
-                            <Tabs value={activeStoreTab} onValueChange={setActiveStoreTab} className="w-full">
-                              <div className="flex justify-center mb-4">
-                                <AnimatedTabToggle
-                                  options={[
-                                    { label: "Magazin", value: "existing" },
-                                    { label: "✨Nou", value: "new" },
-                                  ]}
-                                  value={activeStoreTab}
-                                  onChange={(value) => {
-                                    setActiveStoreTab(value)
-                                    // Set isCreatingNewStore based on the selected tab
-                                    setIsCreatingNewStore(value === "new")
-                                  }}
-                                />
-                              </div>
-
-                              <div className="text-xs text-muted-foreground mt-2">
-                                {activeStoreTab === "existing" ? "Alegeti magazin existent" : "Adăugați un magazin nou"}
-                              </div>
-                              <TabsContent
-                                value="existing"
-                                className="bg-transparent border border-border rounded-b-md p-4"
-                              >
-                                <div className="space-y-2 mt-4">
-                                  <StoreSelector
-                                    onStoreSelect={handleStoreSelect}
-                                    initialStoreId={selectedStore?.store_id || null}
+                          {/* Only show store selection for Interventie, Deschidere, Optimizare */}
+                          {type && !["Froo", "BurgerKing"].includes(type) && (
+                            <div className="mt-4">
+                              <Tabs value={activeStoreTab} onValueChange={setActiveStoreTab} className="w-full">
+                                <div className="flex justify-center mb-4">
+                                  <AnimatedTabToggle
+                                    options={[
+                                      { label: "Magazin", value: "existing" },
+                                      { label: "✨Nou", value: "new" },
+                                    ]}
+                                    value={activeStoreTab}
+                                    onChange={(value) => {
+                                      setActiveStoreTab(value)
+                                      // Set isCreatingNewStore based on the selected tab
+                                      setIsCreatingNewStore(value === "new")
+                                    }}
                                   />
-                                  {!selectedStore && storeNumber && (
-                                    <Alert className="bg-yellow-50 border-yellow-200 p-2 mt-2">
-                                      <div className="flex items-center">
-                                        <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
-                                        <AlertDescription className="text-yellow-700 text-xs">
-                                          Magazin negăsit. Apasati Magazin Nou si completați datele cerute.
-                                        </AlertDescription>
-                                      </div>
-                                    </Alert>
-                                  )}
-                                  {selectedStore && (
-                                    <Alert className="bg-green-50 border-green-200 p-2">
-                                      <div className="flex items-center">
-                                        <Check className="h-4 w-4 text-green-600 mr-2" />
-                                        <AlertDescription className="text-green-600 text-xs">
-                                          Magazin selectat: {selectedStore.description} - {selectedStore.city},{" "}
-                                          {selectedStore.county}
-                                        </AlertDescription>
-                                      </div>
-                                    </Alert>
-                                  )}
                                 </div>
-                              </TabsContent>
 
-                              <TabsContent
-                                value="new"
-                                className="bg-transparent border border-neutral-300 rounded-b-md p-4"
-                              >
-                                <div className="space-y-4 mt-4">
-                                  <div>
-                                    <Label htmlFor="storeNumber" className="text-blue-700">
-                                      Nr. Magazin <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                      id="storeNumber"
-                                      value={storeNumber}
-                                      onChange={(e) => {
-                                        const value = e.target.value
-                                        // Only allow digits and limit to 4 characters
-                                        if (/^\d*$/.test(value) && value.length <= 4) {
-                                          setStoreNumber(value)
-                                        }
-                                      }}
-                                      disabled={isSubmitting}
-                                      className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                      placeholder="4 cifre (ex: 3868)"
-                                      maxLength={4}
+                                <div className="text-xs text-muted-foreground mt-2">
+                                  {activeStoreTab === "existing"
+                                    ? "Alegeti magazin existent"
+                                    : "Adăugați un magazin nou"}
+                                </div>
+                                <TabsContent
+                                  value="existing"
+                                  className="bg-transparent border border-border rounded-b-md p-4"
+                                >
+                                  <div className="space-y-2 mt-4">
+                                    <StoreSelector
+                                      onStoreSelect={handleStoreSelect}
+                                      initialStoreId={selectedStore?.store_id || null}
                                     />
-                                    <div className="text-xs text-blue-600 mt-1">
-                                      Introduceți numarul magazinului (4 cifre)
-                                    </div>
+                                    {!selectedStore && storeNumber && (
+                                      <Alert className="bg-yellow-50 border-yellow-200 p-2 mt-2">
+                                        <div className="flex items-center">
+                                          <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
+                                          <AlertDescription className="text-yellow-700 text-xs">
+                                            Magazin negăsit. Apasati Magazin Nou si completați datele cerute.
+                                          </AlertDescription>
+                                        </div>
+                                      </Alert>
+                                    )}
+                                    {selectedStore && (
+                                      <Alert className="bg-green-50 border-green-200 p-2">
+                                        <div className="flex items-center">
+                                          <Check className="h-4 w-4 text-green-600 mr-2" />
+                                          <AlertDescription className="text-green-600 text-xs">
+                                            Magazin selectat: {selectedStore.description} - {selectedStore.city},{" "}
+                                            {selectedStore.county}
+                                          </AlertDescription>
+                                        </div>
+                                      </Alert>
+                                    )}
                                   </div>
+                                </TabsContent>
 
-                                  <div>
-                                    <Label htmlFor="storeName" className="text-blue-700">
-                                      Denumire Magazin <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                      id="storeName"
-                                      value={storeName}
-                                      onChange={(e) => setStoreName(e.target.value)}
-                                      disabled={isSubmitting}
-                                      className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                      placeholder="Ex: Profi Deva Constructorilor"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <Label htmlFor="county" className="text-blue-700">
-                                      Județ <span className="text-red-500">*</span>
-                                    </Label>
-                                    <div className="relative">
+                                <TabsContent
+                                  value="new"
+                                  className="bg-transparent border border-neutral-300 rounded-b-md p-4"
+                                >
+                                  <div className="space-y-4 mt-4">
+                                    <div>
+                                      <Label htmlFor="storeNumber" className="text-blue-700">
+                                        Nr. Magazin <span className="text-red-500">*</span>
+                                      </Label>
                                       <Input
-                                        id="county"
-                                        value={selectedCounty}
+                                        id="storeNumber"
+                                        value={storeNumber}
                                         onChange={(e) => {
                                           const value = e.target.value
-                                          setSelectedCounty(value)
-
-                                          // When county changes, reset city
-                                          if (!equalsIgnoreCase(value, selectedCounty)) {
-                                            setCityName("")
+                                          // Only allow digits and limit to 4 characters
+                                          if (/^\d*$/.test(value) && value.length <= 4) {
+                                            setStoreNumber(value)
                                           }
-                                        }}
-                                        onBlur={() => {
-                                          // Normalize county name on blur
-                                          const normalized = normalizeCountyName(selectedCounty)
-                                          setSelectedCounty(normalized)
                                         }}
                                         disabled={isSubmitting}
                                         className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                        placeholder="Introduceți județul"
+                                        placeholder="4 cifre (ex: 3868)"
+                                        maxLength={4}
                                       />
-                                    </div>
-                                    <div className="text-xs text-blue-600 mt-1">
-                                      Introduceți numele județului (ex: București, Ilfov, Cluj)
-                                    </div>
-                                  </div>
-
-                                  {/* Now replace the city input field with a select dropdown when localities are available
-                                  Find the city input field (around line 380) and replace it with: */}
-                                  <div>
-                                    <Label htmlFor="city" className="text-blue-700">
-                                      Oraș/Comună <span className="text-red-500">*</span>
-                                    </Label>
-                                    {localities.length > 0 ? (
-                                      <Select
-                                        onValueChange={(value) => setCityName(value)}
-                                        value={cityName}
-                                        disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
-                                      >
-                                        <SelectTrigger
-                                          id="city"
-                                          className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                        >
-                                          <SelectValue placeholder="Selectați localitatea" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {localities.map((locality) => (
-                                            <SelectItem key={locality} value={locality}>
-                                              {locality}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    ) : (
-                                      <Input
-                                        id="city"
-                                        value={cityName}
-                                        onChange={(e) => setCityName(e.target.value)}
-                                        disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
-                                        className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                        placeholder={
-                                          isLoadingLocalities
-                                            ? "Se încarcă localitățile..."
-                                            : selectedCounty
-                                              ? "Introduceți localitatea"
-                                              : "Selectați mai întâi județul"
-                                        }
-                                      />
-                                    )}
-                                    {isLoadingLocalities && (
-                                      <div className="text-xs text-blue-600 mt-1 flex items-center">
-                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                        Se încarcă localitățile...
+                                      <div className="text-xs text-blue-600 mt-1">
+                                        Introduceți numarul magazinului (4 cifre)
                                       </div>
-                                    )}
-                                    {localityError && (
-                                      <div className="text-xs text-orange-600 mt-1">{localityError}</div>
-                                    )}
-                                  </div>
+                                    </div>
 
-                                  <div>
-                                    <Label htmlFor="storeAddress" className="text-blue-700">
-                                      Adresa (strada, număr) <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                      id="storeAddress"
-                                      value={storeAddress}
-                                      onChange={(e) => setStoreAddress(e.target.value)}
-                                      disabled={isSubmitting}
-                                      className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                      placeholder="Ex: Strada Principală, nr. 10"
-                                    />
-                                  </div>
+                                    <div>
+                                      <Label htmlFor="storeName" className="text-blue-700">
+                                        Denumire Magazin <span className="text-red-500">*</span>
+                                      </Label>
+                                      <Input
+                                        id="storeName"
+                                        value={storeName}
+                                        onChange={(e) => setStoreName(e.target.value)}
+                                        disabled={isSubmitting}
+                                        className="mt-1 border-blue-200 focus-visible:ring-blue-400"
+                                        placeholder="Ex: Profi Deva Constructorilor"
+                                      />
+                                    </div>
 
-                                  <div className="flex justify-end space-x-2 mt-4">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setActiveStoreTab("existing")
-                                        setIsCreatingNewStore(false)
-                                      }}
-                                      className="h-8 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
-                                    >
-                                      <X className="h-4 w-4 mr-1" />
-                                      Anulează
-                                    </Button>
+                                    <div>
+                                      <Label htmlFor="county" className="text-blue-700">
+                                        Județ <span className="text-red-500">*</span>
+                                      </Label>
+                                      <div className="relative">
+                                        <Input
+                                          id="county"
+                                          value={selectedCounty}
+                                          onChange={(e) => {
+                                            const value = e.target.value
+                                            setSelectedCounty(value)
+
+                                            // When county changes, reset city
+                                            if (!equalsIgnoreCase(value, selectedCounty)) {
+                                              setCityName("")
+                                            }
+                                          }}
+                                          onBlur={() => {
+                                            // Normalize county name on blur
+                                            const normalized = normalizeCountyName(selectedCounty)
+                                            setSelectedCounty(normalized)
+                                          }}
+                                          disabled={isSubmitting}
+                                          className="mt-1 border-blue-200 focus-visible:ring-blue-400"
+                                          placeholder="Introduceți județul"
+                                        />
+                                      </div>
+                                      <div className="text-xs text-blue-600 mt-1">
+                                        Introduceți numele județului (ex: București, Ilfov, Cluj)
+                                      </div>
+                                    </div>
+
+                                    {/* Now replace the city input field with a select dropdown when localities are available */}
+                                    <div>
+                                      <Label htmlFor="city" className="text-blue-700">
+                                        Oraș/Comună <span className="text-red-500">*</span>
+                                      </Label>
+                                      {localities.length > 0 ? (
+                                        <Select
+                                          onValueChange={(value) => setCityName(value)}
+                                          value={cityName}
+                                          disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
+                                        >
+                                          <SelectTrigger
+                                            id="city"
+                                            className="mt-1 border-blue-200 focus-visible:ring-blue-400"
+                                          >
+                                            <SelectValue placeholder="Selectați localitatea" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {localities.map((locality) => (
+                                              <SelectItem key={locality} value={locality}>
+                                                {locality}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : (
+                                        <Input
+                                          id="city"
+                                          value={cityName}
+                                          onChange={(e) => setCityName(e.target.value)}
+                                          disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
+                                          className="mt-1 border-blue-200 focus-visible:ring-blue-400"
+                                          placeholder={
+                                            isLoadingLocalities
+                                              ? "Se încarcă localitățile..."
+                                              : selectedCounty
+                                                ? "Introduceți localitatea"
+                                                : "Selectați mai întâi județul"
+                                          }
+                                        />
+                                      )}
+                                      {isLoadingLocalities && (
+                                        <div className="text-xs text-blue-600 mt-1 flex items-center">
+                                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                          Se încarcă localitățile...
+                                        </div>
+                                      )}
+                                      {localityError && (
+                                        <div className="text-xs text-orange-600 mt-1">{localityError}</div>
+                                      )}
+                                    </div>
+
+                                    <div>
+                                      <Label htmlFor="storeAddress" className="text-blue-700">
+                                        Adresa (strada, număr) <span className="text-red-500">*</span>
+                                      </Label>
+                                      <Input
+                                        id="storeAddress"
+                                        value={storeAddress}
+                                        onChange={(e) => setStoreAddress(e.target.value)}
+                                        disabled={isSubmitting}
+                                        className="mt-1 border-blue-200 focus-visible:ring-blue-400"
+                                        placeholder="Ex: Strada Principală, nr. 10"
+                                      />
+                                    </div>
+
+                                    <div className="flex justify-end space-x-2 mt-4">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setActiveStoreTab("existing")
+                                          setIsCreatingNewStore(false)
+                                        }}
+                                        className="h-8 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        <X className="h-4 w-4 mr-1" />
+                                        Anulează
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
-                              </TabsContent>
-                            </Tabs>
-                          </div>
+                                </TabsContent>
+                              </Tabs>
+                            </div>
+                          )}
+
+                          {/* Show info message for Froo and BurgerKing */}
+                          {type && ["Froo", "BurgerKing"].includes(type) && (
+                            <div className="mt-4">
+                              <Alert className="bg-blue-50 border-blue-200">
+                                <AlertDescription className="text-blue-700 text-sm">
+                                  Pentru {type}, nu este necesară selectarea magazinului. Continuați la tabul "Echipă"
+                                  pentru a completa informațiile despre echipă.
+                                </AlertDescription>
+                              </Alert>
+                            </div>
+                          )}
                         </div>
                       </TabsContent>
                       <TabsContent value="team">

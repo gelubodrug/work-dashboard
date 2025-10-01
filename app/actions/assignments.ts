@@ -1,11 +1,11 @@
 "use server"
 
+import { neon } from "@neondatabase/serverless"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { neon } from "@neondatabase/serverless"
-import { updateUserStatus } from "./users"
 import { query } from "@/lib/db"
 import { getVehicleTimestamps } from "./vehicle-tracking"
+import { updateUserStatus } from "./users"
 
 const DEFAULT_ADDRESS = "sos. Banatului 109A, Chitila, Romania"
 const CHITILA_ADDRESS = "Chitila, Romania"
@@ -391,30 +391,6 @@ export async function createAssignment(data: any) {
   }
 }
 
-// Update the recalculateDistance function
-export async function recalculateDistance(assignmentId: number) {
-  try {
-    console.log(`[DEBUG] Recalculating distance for assignment ${assignmentId}`)
-
-    // Get the assignment data
-    const result = await query(`SELECT id, store_points FROM assignments WHERE id = $1`, [assignmentId])
-
-    if (!result.rows || result.rows.length === 0) {
-      throw new Error(`Assignment with ID ${assignmentId} not found`)
-    }
-
-    // Since we're removing the osm-distance dependency, we'll return a message
-    // directing users to use the test/assignment-route page instead
-    return {
-      success: false,
-      error:
-        "Distance calculation has been moved to the test/assignment-route page. Please use that page to calculate distances.",
-    }
-  } catch (error) {
-    console.error("[DEBUG] Error recalculating distance:", error)
-    return { success: false, error: String(error) }
-  }
-}
 export async function updateAssignment(data: any) {
   // Add this code at the beginning of the function to handle date conversion
   if (data.due_date instanceof Date) {
@@ -638,6 +614,10 @@ export async function finalizeAssignmentWithTeam(assignment: any) {
     console.log(`[DEBUG] Finalizing assignment ID: ${assignment.id}`)
     console.log(`[DEBUG] Assignment data:`, JSON.stringify(assignment, null, 2))
 
+    // Check if this is a Froo or BurgerKing assignment that can skip km validation
+    const skipKmValidation = assignment.type === "Froo" || assignment.type === "BurgerKing"
+    console.log(`[DEBUG] Skip KM validation: ${skipKmValidation} (type: ${assignment.type})`)
+
     // Step 1: Check if the assignment is already finalized
     const statusCheckResult = await query(`SELECT status FROM assignments WHERE id = $1`, [assignment.id])
 
@@ -762,27 +742,34 @@ export async function finalizeAssignmentWithTeam(assignment: any) {
     let km = 0
     let drivingTime = 0
 
-    // Always prioritize database values for finalization
-    if (assignmentData) {
-      // Get km value
-      km = typeof assignmentData.km === "string" ? Number(assignmentData.km) : assignmentData.km || 0
-
-      // Get driving time value
-      drivingTime =
-        typeof assignmentData.driving_time === "string"
-          ? Number(assignmentData.driving_time) || 0
-          : assignmentData.driving_time || 0
-
-      console.log(`[DEBUG] Using values from database: ${km} km, ${drivingTime} min`)
+    // For Froo and BurgerKing, always use 0 for km and driving time
+    if (skipKmValidation) {
+      km = 0
+      drivingTime = 0
+      console.log(`[DEBUG] Using 0 km and driving time for ${assignment.type} assignment`)
     } else {
-      // Fallback to assignment values if no database record found (shouldn't happen)
-      km = typeof assignment.km === "string" ? Number(assignment.km) || 0 : assignment.km || 0
-      drivingTime =
-        typeof assignment.driving_time === "string"
-          ? Number(assignment.driving_time) || 0
-          : assignment.driving_time || 0
+      // Always prioritize database values for finalization
+      if (assignmentData) {
+        // Get km value
+        km = typeof assignmentData.km === "string" ? Number(assignmentData.km) : assignmentData.km || 0
 
-      console.log(`[DEBUG] No database record found, using assignment values: ${km} km, ${drivingTime} min`)
+        // Get driving time value
+        drivingTime =
+          typeof assignmentData.driving_time === "string"
+            ? Number(assignmentData.driving_time) || 0
+            : assignmentData.driving_time || 0
+
+        console.log(`[DEBUG] Using values from database: ${km} km, ${drivingTime} min`)
+      } else {
+        // Fallback to assignment values if no database record found (shouldn't happen)
+        km = typeof assignment.km === "string" ? Number(assignment.km) || 0 : assignment.km || 0
+        drivingTime =
+          typeof assignment.driving_time === "string"
+            ? Number(assignment.driving_time) || 0
+            : assignment.driving_time || 0
+
+        console.log(`[DEBUG] No database record found, using assignment values: ${km} km, ${drivingTime} min`)
+      }
     }
 
     // Step 7: Determine hours value
