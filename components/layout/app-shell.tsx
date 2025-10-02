@@ -236,7 +236,7 @@ export function AppShell({ children }: AppShellProps) {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">
                   <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logoOXO_2024-juzaFW98gn7iL4rnzj1ojBvlczmnZq.png"
+                    src="/images/design-mode/logoOXO_2024.png"
                     alt="OXO Logo"
                     width={40}
                     height={40}
