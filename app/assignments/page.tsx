@@ -47,7 +47,7 @@ import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
 import { deleteAssignment } from "@/app/actions/delete-assignment"
 
 // License Plate Component
-function LicensePlate({ plate, color = "gr" }) {
+function LicensePlate({ plate, color = "gr" }: { plate: string; color?: string }) {
   const bgColor = color === "gr" ? "bg-gray-100" : "bg-blue-100"
   const textColor = color === "gr" ? "text-gray-800" : "text-blue-800"
 
@@ -55,7 +55,13 @@ function LicensePlate({ plate, color = "gr" }) {
 }
 
 // Move TypeFilters component outside of AssignmentsPage
-function TypeFilters({ activeFilter, setActiveFilter }) {
+function TypeFilters({
+  activeFilter,
+  setActiveFilter,
+}: {
+  activeFilter: string
+  setActiveFilter: (filter: string) => void
+}) {
   const filters = [
     { value: "all", label: "All" },
     { value: "Interventie", label: "Interventie" },
@@ -88,7 +94,7 @@ function TypeFilters({ activeFilter, setActiveFilter }) {
 }
 
 // Format time for display
-const formatTime = (dateString) => {
+const formatTime = (dateString: string) => {
   if (!dateString) return "-"
   try {
     return format(parseISO(dateString), "MMM d, HH:mm")
@@ -98,7 +104,7 @@ const formatTime = (dateString) => {
 }
 
 // Calculate duration from start date to now
-const calculateDuration = (dateString) => {
+const calculateDuration = (dateString: string) => {
   if (!dateString) return "-"
   try {
     const startDate = parseISO(dateString)
@@ -117,55 +123,61 @@ const calculateDuration = (dateString) => {
   }
 }
 
-// Format driving time to hours
-const formatDrivingTimeToHours = (drivingTime) => {
-  if (!drivingTime) return "0h"
-
-  // If it's already in the format like "2h 30min", return as is
-  if (typeof drivingTime === "string" && drivingTime.includes("h")) {
-    return drivingTime
+// Get status badge color
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "Finalizat":
+      return "bg-green-100 text-green-800 border-green-200"
+    case "In Deplasare":
+      return "bg-blue-100 text-blue-800 border-blue-200"
+    case "Anulat":
+      return "bg-red-100 text-red-800 border-red-200"
+    default:
+      return "bg-gray-100 text-gray-800 border-gray-200"
   }
-
-  // Convert from minutes to hours (driving_time is stored in minutes)
-  const hours = Math.floor(Number(drivingTime) / 60)
-  const minutes = Math.floor(Number(drivingTime) % 60)
-
-  if (hours > 0) {
-    return `${hours}h ${minutes > 0 ? `${minutes}m` : ""}`
-  }
-  return `${minutes}m`
 }
 
-// Format km with 1 decimal place
-const formatKm = (km) => {
-  if (!km) return "0"
-  return Number(km).toFixed(1)
+// Get type badge color
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case "Interventie":
+      return "bg-blue-100 text-blue-800 border-blue-200"
+    case "Optimizare":
+      return "bg-orange-100 text-orange-800 border-orange-200"
+    case "Deschidere":
+      return "bg-green-100 text-green-800 border-green-200"
+    case "Froo":
+      return "bg-purple-100 text-purple-800 border-purple-200"
+    case "BurgerKing":
+      return "bg-red-100 text-red-800 border-red-200"
+    default:
+      return "bg-purple-100 text-purple-800 border-purple-200"
+  }
 }
 
 export default function AssignmentsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [assignments, setAssignments] = useState([])
-  const [filteredAssignments, setFilteredAssignments] = useState([])
+  const [assignments, setAssignments] = useState<any[]>([])
+  const [filteredAssignments, setFilteredAssignments] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("active")
   const [activeFilter, setActiveFilter] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
-  const [isFinalizingAssignment, setIsFinalizingAssignment] = useState(false)
-  const [selectedAssignment, setSelectedAssignment] = useState(null)
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null)
 
   // Finalization dialog state
   const [isConfirmFinalizeOpen, setIsConfirmFinalizeOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isMakingAPICall, setIsMakingAPICall] = useState(false)
 
-  // Add these state variables with the other state variables
+  // Delete dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
-  const [isFinalizeDialogOpen, setIsFinalizeDialogOpen] = useState(false)
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null)
+
+  // Recalculation state
   const [isRecalculating, setIsRecalculating] = useState(false)
-  const [recalculationResult, setRecalculationResult] = useState(null)
+  const [recalculationResult, setRecalculationResult] = useState<any>(null)
 
   useEffect(() => {
     const tab = searchParams.get("tab")
@@ -208,7 +220,7 @@ export default function AssignmentsPage() {
     }
   }
 
-  // Apply all filters when assignments, active tab, search term, or type filter changes
+  // Apply all filters
   useEffect(() => {
     let filtered = [...assignments]
 
@@ -239,31 +251,43 @@ export default function AssignmentsPage() {
     }
 
     // Sort by most recent start_date
-    filtered.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
+    filtered.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 
     setFilteredAssignments(filtered)
   }, [assignments, activeTab, searchTerm, activeFilter])
 
-  const handleFinalize = async (assignment) => {
-    // Allow Froo and BurgerKing to be finalized without km calculation
-    const skipKmValidation = assignment.type === "Froo" || assignment.type === "BurgerKing"
+  const handleFinalize = async (assignment: any) => {
+    console.log("[DEBUG] handleFinalize called with assignment:", assignment)
 
-    // If km is 0 and it's not a type that skips validation, redirect to route calculation page
-    if (!skipKmValidation && (assignment.km === 0 || assignment.km === "0")) {
-      router.push(`/test/assignment-route?id=${assignment.id}`)
+    // Check if this is a type that can skip km validation
+    const skipKmValidation = assignment.type === "Froo" || assignment.type === "BurgerKing"
+    const kmValue = typeof assignment.km === "string" ? Number.parseFloat(assignment.km) : assignment.km || 0
+
+    console.log("[DEBUG] Skip KM validation:", skipKmValidation, "KM value:", kmValue)
+
+    if (!skipKmValidation && kmValue === 0) {
+      // Redirect to calculate route
+      router.push(`/test/assignment-route?id=${assignment.id}&autoFinalize=true`)
       return
     }
 
+    // For Froo/BurgerKing OR if KM was calculated normally, confirm finalization
     setSelectedAssignment(assignment)
     setIsConfirmFinalizeOpen(true)
   }
 
   const confirmFinalize = async () => {
-    if (!selectedAssignment) return
+    if (!selectedAssignment) {
+      console.log("[DEBUG] No selected assignment")
+      return
+    }
 
+    console.log("[DEBUG] Starting finalization for assignment:", selectedAssignment.id)
     setIsSubmitting(true)
+
     try {
       const result = await finalizeAssignmentWithTeam(selectedAssignment)
+      console.log("[DEBUG] Finalization result:", result)
 
       if (result.success) {
         toast({
@@ -276,10 +300,10 @@ export default function AssignmentsPage() {
         throw new Error(result.error || "Failed to finalize assignment")
       }
     } catch (error) {
-      console.error("Error finalizing assignment:", error)
+      console.error("[DEBUG] Error finalizing assignment:", error)
       toast({
         title: "Error",
-        description: `Failed to finalize assignment: ${error.message}`,
+        description: `Failed to finalize assignment: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       })
     } finally {
@@ -287,12 +311,10 @@ export default function AssignmentsPage() {
     }
   }
 
-  const handleRouteUpdate = async (storeIds, assignmentId) => {
+  const handleRouteUpdate = async (storeIds: number[], assignmentId: number) => {
     if (!assignmentId) return
 
-    setIsMakingAPICall(true)
     try {
-      // Call the server action to update the route points
       const result = await manuallyCalculateRoute(assignmentId, storeIds)
 
       if (result.success) {
@@ -301,58 +323,29 @@ export default function AssignmentsPage() {
           description: "Route updated successfully",
         })
       } else {
-        // Show toast about needing recalculation
         toast({
           title: "Route points updated",
           description: "KM reset to 0. Click on the orange KM indicator to calculate the route.",
         })
       }
 
-      // Fetch fresh data to update the UI
-      const response = await fetch(`/api/assignments?tab=${activeTab}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-
-        // Process the data to ensure assignments with zero km show properly
-        const processedData = data.map((assignment) => {
-          if (assignment.id === assignmentId) {
-            // Force km and driving_time to be treated as not calculated
-            return {
-              ...assignment,
-              km: "0",
-              driving_time: "0",
-            }
-          }
-          return assignment
-        })
-
-        setAssignments(processedData)
-      }
+      fetchAssignments()
     } catch (error) {
       console.error("Error updating route:", error)
       toast({
         title: "Error",
-        description: `Failed to update route: ${error.message}`,
+        description: `Failed to update route: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       })
-    } finally {
-      setIsMakingAPICall(false)
     }
   }
 
-  const handleRecalculateDistance = async (assignmentId) => {
+  const handleRecalculateDistance = async (assignmentId: number) => {
     setSelectedAssignmentId(assignmentId)
     setIsRecalculating(true)
     setRecalculationResult(null)
 
     try {
-      // Call API to recalculate distance
       const response = await fetch(`/api/assignments/${assignmentId}/recalculate`, {
         method: "POST",
       })
@@ -369,13 +362,12 @@ export default function AssignmentsPage() {
         description: "Distance recalculated successfully",
       })
 
-      // Refresh assignments to get updated data
       fetchAssignments()
     } catch (error) {
       console.error("Error recalculating distance:", error)
       toast({
         title: "Error",
-        description: `Failed to recalculate distance: ${error.message}`,
+        description: `Failed to recalculate distance: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       })
     } finally {
@@ -383,59 +375,11 @@ export default function AssignmentsPage() {
     }
   }
 
-  const handleRouteChange = (storeIds, assignmentId) => {
-    handleRouteUpdate(storeIds, assignmentId)
-  }
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return "-"
-    try {
-      return format(parseISO(dateString), "MMM d, yyyy")
-    } catch (e) {
-      return dateString
-    }
-  }
-
-  // Get status badge color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Finalizat":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "In Deplasare":
-        return "bg-blue-100 text-blue-800 border-blue-200"
-      case "Anulat":
-        return "bg-red-100 text-red-800 border-red-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
-
-  // Get type badge color
-  const getTypeColor = (type) => {
-    switch (type) {
-      case "Interventie":
-        return "bg-blue-100 text-blue-800 border-blue-200"
-      case "Optimizare":
-        return "bg-orange-100 text-orange-800 border-orange-200"
-      case "Deschidere":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "Froo":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "BurgerKing":
-        return "bg-orange-100 text-orange-800 border-orange-200"
-      default:
-        return "bg-purple-100 text-purple-800 border-purple-200"
-    }
-  }
-
-  // Update the handleDeleteAssignment function in the component
   const handleDeleteAssignment = async (password: string) => {
     if (!selectedAssignmentId) return
 
     setIsSubmitting(true)
     try {
-      // Use the server action instead of direct API call
       const result = await deleteAssignment(selectedAssignmentId, password)
 
       if (result.success) {
@@ -444,9 +388,8 @@ export default function AssignmentsPage() {
           description: result.message || "Assignment deleted successfully",
         })
         setIsDeleteDialogOpen(false)
-        fetchAssignments() // Refresh the assignments list
+        fetchAssignments()
       } else {
-        // Show specific error message
         toast({
           title: "Error",
           description: result.error || "Failed to delete assignment",
@@ -499,7 +442,7 @@ export default function AssignmentsPage() {
             </Button>
           </div>
 
-          {/* Search and filters section */}
+          {/* Search and filters */}
           <div className="mb-4 space-y-2">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -535,11 +478,8 @@ export default function AssignmentsPage() {
             ) : (
               <div className="space-y-4">
                 {filteredAssignments.map((assignment) => {
-                  // Parse members array if it's a string
                   const members =
                     typeof assignment.members === "string" ? JSON.parse(assignment.members) : assignment.members || []
-
-                  // Parse store points if available
                   const storePoints = assignment.store_points || []
 
                   return (
@@ -549,7 +489,6 @@ export default function AssignmentsPage() {
                     >
                       <CardContent className="p-4">
                         <div className="flex flex-col gap-2">
-                          {/* Top Row: Title, Time Ago, Type, Status */}
                           <div className="flex items-center justify-between">
                             <div className="flex flex-col">
                               <CardTitle className="text-sm">
@@ -574,7 +513,6 @@ export default function AssignmentsPage() {
                             </div>
                           </div>
 
-                          {/* Team Members and Car Information */}
                           <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-1 items-start">
                               <div className="flex items-center gap-1">
@@ -605,7 +543,6 @@ export default function AssignmentsPage() {
                             </div>
                           )}
 
-                          {/* Date and Duration */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="flex items-center">
@@ -619,7 +556,6 @@ export default function AssignmentsPage() {
                             </div>
                           </div>
 
-                          {/* Route Info and Actions */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <AssignmentKmCell
@@ -689,7 +625,7 @@ export default function AssignmentsPage() {
                               startCity="Chitila"
                               endCity="Chitila"
                               assignment={assignment}
-                              onRouteChange={handleRouteChange}
+                              onRouteChange={(storeIds) => handleRouteUpdate(storeIds, assignment.id)}
                             />
                           )}
                         </div>
@@ -702,14 +638,10 @@ export default function AssignmentsPage() {
           </TabsContent>
 
           <TabsContent value="completed" className="mt-0">
+            {/* Similar structure for completed assignments */}
             {isLoading ? (
               <div className="flex justify-center items-center py-20">
                 <div className="h-8 w-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-              </div>
-            ) : error ? (
-              <div className="p-4 border border-red-200 rounded-md bg-red-50 text-red-700 flex items-center">
-                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                <p>{error}</p>
               </div>
             ) : filteredAssignments.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-md">
@@ -719,28 +651,17 @@ export default function AssignmentsPage() {
             ) : (
               <div className="space-y-4">
                 {filteredAssignments.map((assignment) => {
-                  // Parse members array if it's a string
                   const members =
                     typeof assignment.members === "string" ? JSON.parse(assignment.members) : assignment.members || []
-
-                  // Parse store points if available
-                  const storePoints = assignment.store_points || []
 
                   return (
                     <Card key={assignment.id} className="overflow-hidden border border-gray-200">
                       <CardContent className="p-4">
                         <div className="flex flex-col gap-2">
-                          {/* Top Row: Title, Time Ago, Type, Status */}
                           <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                              <CardTitle className="text-sm">
-                                {assignment.city} - {assignment.store_number}
-                              </CardTitle>
-                              <div className="text-xs text-muted-foreground">
-                                id: {assignment.id} from{" "}
-                                {formatDistanceToNow(parseISO(assignment.start_date), { addSuffix: true })}
-                              </div>
-                            </div>
+                            <CardTitle className="text-sm">
+                              {assignment.city} - {assignment.store_number}
+                            </CardTitle>
                             <div className="flex items-center gap-1">
                               <Badge
                                 className={`${getTypeColor(assignment.type)} text-[10px] py-0.5 px-1.5 whitespace-nowrap`}
@@ -755,115 +676,19 @@ export default function AssignmentsPage() {
                             </div>
                           </div>
 
-                          {/* Team Members and Car Information */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-1 items-start">
-                              <div className="flex items-center gap-1">
-                                <Car className="h-4 w-4 text-gray-400" />
-                                <LicensePlate plate={assignment.car_plate || "NA"} color="gr" />
-                              </div>
-                              {assignment.team_lead && (
-                                <div className="flex items-center">
-                                  <Users className="h-4 w-4 mr-2 text-gray-400" />
-                                  <TeamMemberAvatars members={[assignment.team_lead]} showNames />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-col items-end text-xs gap-1">
-                              <GPSTimestamps
-                                gpsStartDate={assignment.gps_start_date}
-                                gpsCompletionDate={assignment.return_time}
-                                returnTime={assignment.return_time}
-                              />
-                            </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <PlayCircle className="h-4 w-4 text-gray-400" />
+                            <span>{formatTime(assignment.start_date)}</span>
+                            <StopCircle className="h-4 w-4 text-gray-400" />
+                            <span>{formatTime(assignment.completion_date)}</span>
+                            <Clock className="h-4 w-4 text-gray-400" />
+                            <span>{assignment.hours}h</span>
                           </div>
 
-                          {members.length > 0 && (
-                            <div className="flex items-center">
-                              <Users className="h-4 w-4 mr-2 text-gray-400" />
-                              <TeamMemberAvatars members={members} showNames={true} />
+                          {assignment.km && (
+                            <div className="text-xs text-gray-600">
+                              Distance: {Number.parseFloat(assignment.km).toFixed(1)} km
                             </div>
-                          )}
-
-                          {/* Date and Duration */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center">
-                                <PlayCircle className="h-4 w-4 mr-1 text-gray-400" />
-                                <span className="text-xs">{formatTime(assignment.start_date)}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <StopCircle className="h-4 w-4 mr-1 text-gray-400" />
-                                <span className="text-xs">{formatTime(assignment.completion_date)}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1 text-gray-400" />
-                                <span className="text-xs">{assignment.hours}h</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Route Info and Actions */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AssignmentKmCell
-                                assignmentId={assignment.id}
-                                km={assignment.km}
-                                drivingTime={assignment.driving_time}
-                                onRecalculate={handleRecalculateDistance}
-                                isRecalculating={isRecalculating && selectedAssignmentId === assignment.id}
-                                recalculationResult={
-                                  selectedAssignmentId === assignment.id ? recalculationResult : null
-                                }
-                              />
-                            </div>
-
-                            <div className="flex gap-2 items-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => router.push(`/deplasareform?id=${assignment.id}`)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => router.push(`/test/assignment-route?id=${assignment.id}`)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Route className="h-4 w-4 mr-2" />
-                                    Calculate Route
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedAssignmentId(assignment.id)
-                                      setIsDeleteDialogOpen(true)
-                                    }}
-                                    className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-
-                          {storePoints.length > 0 && (
-                            <RoutePointsDisplay
-                              startCity="Chitila"
-                              endCity="Chitila"
-                              assignment={assignment}
-                              onRouteChange={handleRouteChange}
-                            />
                           )}
                         </div>
                       </CardContent>
@@ -897,14 +722,11 @@ export default function AssignmentsPage() {
           onConfirm={handleDeleteAssignment}
           isSubmitting={isSubmitting}
           title="Delete Assignment"
-          description="Are you sure you want to delete this assignment? This action cannot be undone and will remove all related data."
+          description="Are you sure you want to delete this assignment? This action cannot be undone."
           requirePassword={true}
           itemDetails={
             selectedAssignment
-              ? `Assignment ID: ${selectedAssignment.id}
-     Location: ${selectedAssignment.city}, ${selectedAssignment.county}
-     Type: ${selectedAssignment.type}
-     Team Lead: ${selectedAssignment.team_lead}`
+              ? `ID: ${selectedAssignment.id} | ${selectedAssignment.city}, ${selectedAssignment.county}`
               : undefined
           }
         />

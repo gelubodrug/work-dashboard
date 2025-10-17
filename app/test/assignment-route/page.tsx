@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,7 +13,6 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { finalizeAssignmentWithTeam } from "@/app/actions/assignments"
-// Add the import for the Google Maps component
 import GoogleMapRoute from "@/components/google-map-route"
 import { updateAssignmentDistanceAndDuration } from "./update-assignment"
 
@@ -25,12 +25,11 @@ const HQ_LOCATION = {
   description: "Headquarters",
 }
 
-// Add this after the HQ_LOCATION constant:
 const MATERIALS_DEPOT_LOCATION = {
   address: "Drumul Dealu Bradului, Nr. 141",
   city: "Bucuresti",
   county: "Sectorul 4",
-  coordinates: [26.1153, 44.3689] as [number, number], // [longitude, latitude]
+  coordinates: [26.1153, 44.3689] as [number, number],
   description: "Depozit Materiale",
 }
 
@@ -49,6 +48,7 @@ interface Assignment {
   store_points: number[] | StorePoint[]
   km?: number
   driving_time?: number
+  type?: string
 }
 
 interface Store {
@@ -95,6 +95,8 @@ interface RouteResponse {
 }
 
 export default function TestAssignmentRoutePage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [assignmentId, setAssignmentId] = useState<string>("")
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -109,20 +111,83 @@ export default function TestAssignmentRoutePage() {
   const [finalizationSuccess, setFinalizationSuccess] = useState<boolean>(false)
   const [warnings, setWarnings] = useState<string[]>([])
   const [includeMaterials, setIncludeMaterials] = useState<boolean>(false)
+  const [autoFinalize, setAutoFinalize] = useState<boolean>(false)
+  const isRedirectingRef = useRef(false)
 
+  // Check URL parameters and auto-trigger
   useEffect(() => {
-    // Check if there's an ID in the URL query parameters
     const params = new URLSearchParams(window.location.search)
     const assignmentId = params.get("id")
+    const autoFinalizeParam = params.get("autoFinalize")
 
     if (assignmentId) {
-      // Set the assignment ID in the input field
       setAssignmentId(assignmentId)
 
-      // Automatically trigger the fetch
+      if (autoFinalizeParam === "true") {
+        setAutoFinalize(true)
+      }
+
       handleFetchAssignment(assignmentId)
     }
   }, [])
+
+  // Auto-finalize after route calculation
+  useEffect(() => {
+    if (
+      autoFinalize &&
+      routeResponse?.success &&
+      routeResponse.route &&
+      !isFinalizingAssignment &&
+      !finalizationSuccess &&
+      !isRedirectingRef.current
+    ) {
+      handleAutoFinalize()
+    }
+  }, [autoFinalize, routeResponse, isFinalizingAssignment, finalizationSuccess])
+
+  const handleAutoFinalize = async () => {
+    if (!assignment || !routeResponse?.route || isRedirectingRef.current) return
+
+    setIsFinalizingAssignment(true)
+    setProcessingStep("Auto-finalizing assignment...")
+
+    try {
+      const result = await finalizeAssignmentWithTeam({
+        id: assignment.id,
+        km: routeResponse.route.totalDistance,
+        driving_time: routeResponse.route.totalDuration,
+        completion_date: new Date().toISOString(),
+        type: assignment.type,
+      })
+
+      if (result.success) {
+        setFinalizationSuccess(true)
+        toast({
+          title: "Success",
+          description: "Assignment finalized automatically",
+        })
+
+        // Set redirecting flag and redirect after 1.5 seconds
+        isRedirectingRef.current = true
+        setTimeout(() => {
+          router.push("/assignments")
+        }, 1500)
+      } else {
+        throw new Error(result.error || "Failed to finalize assignment")
+      }
+    } catch (error) {
+      console.error("Error auto-finalizing assignment:", error)
+      toast({
+        title: "Error",
+        description: `Failed to auto-finalize: ${error instanceof Error ? error.message : "Unknown error"}`,
+        variant: "destructive",
+      })
+      setAutoFinalize(false)
+    } finally {
+      setIsFinalizingAssignment(false)
+      setProcessingStep("")
+    }
+  }
 
   const fetchAssignment = async () => {
     if (!assignmentId || isNaN(Number(assignmentId))) {
@@ -139,7 +204,6 @@ export default function TestAssignmentRoutePage() {
       setWarnings([])
       setProcessingStep("Fetching assignment data...")
 
-      // Step 1: Fetch the assignment
       const res = await fetch(`/api/test/assignment/${assignmentId}`)
 
       if (!res.ok) {
@@ -163,11 +227,7 @@ export default function TestAssignmentRoutePage() {
       }
 
       console.log("Assignment data:", data.assignment)
-
-      // Set the assignment state
       setAssignment(data.assignment)
-
-      // Step 2: Process store points - pass the assignment data directly
       await processStorePoints(data.assignment)
     } catch (err) {
       console.error("Error fetching assignment:", err)
@@ -198,7 +258,6 @@ export default function TestAssignmentRoutePage() {
       setWarnings([])
       setProcessingStep("Fetching assignment data...")
 
-      // Step 1: Fetch the assignment
       const res = await fetch(`/api/test/assignment/${id}`)
 
       if (!res.ok) {
@@ -220,11 +279,7 @@ export default function TestAssignmentRoutePage() {
       }
 
       console.log("Assignment data:", data.assignment)
-
-      // Set the assignment state
       setAssignment(data.assignment)
-
-      // Step 2: Process store points - pass the assignment data directly
       await processStorePoints(data.assignment)
     } catch (err) {
       console.error("Error fetching assignment:", err)
@@ -240,11 +295,9 @@ export default function TestAssignmentRoutePage() {
       setRouteLoading(true)
       setWarnings([])
 
-      // Extract store IDs from the assignment's store_points
       let storeIds: number[] = []
 
       if (Array.isArray(assignmentData.store_points)) {
-        // Handle both number[] and StorePoint[] formats
         storeIds = assignmentData.store_points
           .map((point) => {
             if (typeof point === "number") {
@@ -259,16 +312,13 @@ export default function TestAssignmentRoutePage() {
 
       console.log("Extracted store IDs:", storeIds)
 
-      // Changed from 2 to 1 to allow single store routes
       if (storeIds.length < 1) {
         throw new Error("At least 1 store point is required to calculate a route")
       }
 
-      // Fetch all store details in a single batch
       setProcessingStep(`Fetching details for ${storeIds.length} stores...`)
 
       try {
-        // First, fetch all store details
         const processedStores: Store[] = []
         const newWarnings: string[] = []
 
@@ -277,10 +327,8 @@ export default function TestAssignmentRoutePage() {
           setProcessingStep(`Processing store ${i + 1}/${storeIds.length}: Store ID ${storeId}`)
 
           try {
-            // Fetch store details from the stores table
             const storeDetails = await fetchStoreDetails(storeId)
 
-            // Check if the store has a warning
             if (storeDetails.warning) {
               newWarnings.push(storeDetails.warning)
             }
@@ -289,7 +337,6 @@ export default function TestAssignmentRoutePage() {
           } catch (err) {
             console.error(`Error processing store ${storeId}:`, err)
 
-            // Create a placeholder store with error flag
             const placeholderStore: Store = {
               store_id: storeId,
               description: `Store #${storeId}`,
@@ -305,46 +352,35 @@ export default function TestAssignmentRoutePage() {
           }
         }
 
-        // Update the UI with all processed stores
         setStoreDetails(processedStores)
 
-        // Set any warnings
         if (newWarnings.length > 0) {
           setWarnings(newWarnings)
         }
 
-        // Initialize batchData with a default value
         let batchData: any = {
           success: false,
           error: "Route calculation not started",
           calculationMethod: "none",
         }
 
-        // For single store, we need to handle it differently
         if (storeIds.length === 1 && includeHQ) {
-          // For a single store, we'll create a simple route with HQ -> Store -> HQ
           const singleStoreId = storeIds[0]
           const store = processedStores[0]
-
-          // Create a simple route with HQ -> Store -> HQ
           const storeCoords = store.coordinates || [0, 0]
 
-          // Calculate distances using Haversine formula
           const hqToStoreDistance = calculateHaversineDistance(
-            HQ_LOCATION.coordinates[1], // latitude
-            HQ_LOCATION.coordinates[0], // longitude
-            storeCoords[1], // latitude
-            storeCoords[0], // longitude
+            HQ_LOCATION.coordinates[1],
+            HQ_LOCATION.coordinates[0],
+            storeCoords[1],
+            storeCoords[0],
           )
 
-          // Estimate travel times (60 km/h average speed)
-          const hqToStoreDuration = (hqToStoreDistance / 60) * 60 // minutes
+          const hqToStoreDuration = (hqToStoreDistance / 60) * 60
 
-          // Create route segments
           const segments = []
 
           if (includeMaterials) {
-            // Add HQ to Store 6666 segment
             segments.push({
               startStoreId: "HQ",
               endStoreId: 6666,
@@ -352,8 +388,8 @@ export default function TestAssignmentRoutePage() {
               endName: MATERIALS_DEPOT_LOCATION.description,
               startAddress: `${HQ_LOCATION.address}, ${HQ_LOCATION.city}, ${HQ_LOCATION.county}`,
               endAddress: `${MATERIALS_DEPOT_LOCATION.address}, ${MATERIALS_DEPOT_LOCATION.city}, ${MATERIALS_DEPOT_LOCATION.county}`,
-              distance: 25.5, // Updated distance from Chitila to Sectorul 4
-              duration: 45, // Updated duration in minutes
+              distance: 25.5,
+              duration: 45,
               isHQ: true,
               startLatitude: HQ_LOCATION.coordinates[1],
               startLongitude: HQ_LOCATION.coordinates[0],
@@ -361,7 +397,6 @@ export default function TestAssignmentRoutePage() {
               endLongitude: MATERIALS_DEPOT_LOCATION.coordinates[0],
             })
 
-            // Add Store 6666 to actual store segment
             segments.push({
               startStoreId: 6666,
               endStoreId: singleStoreId,
@@ -377,7 +412,6 @@ export default function TestAssignmentRoutePage() {
               endLongitude: storeCoords[0],
             })
           } else {
-            // Standard HQ to store segment
             segments.push({
               startStoreId: "HQ",
               endStoreId: singleStoreId,
@@ -395,7 +429,6 @@ export default function TestAssignmentRoutePage() {
             })
           }
 
-          // Return segment (always the same)
           segments.push({
             startStoreId: singleStoreId,
             endStoreId: "HQ",
@@ -412,11 +445,9 @@ export default function TestAssignmentRoutePage() {
             endLongitude: HQ_LOCATION.coordinates[0],
           })
 
-          // Calculate total distance and duration
           const totalDistance = segments.reduce((sum, segment) => sum + segment.distance, 0)
           const totalDuration = segments.reduce((sum, segment) => sum + segment.duration, 0)
 
-          // Create the route response
           batchData = {
             success: true,
             calculationMethod: "direct",
@@ -427,29 +458,23 @@ export default function TestAssignmentRoutePage() {
             },
           }
         } else {
-          // For multiple stores, use Google Maps API
           const validStores = processedStores.filter((store) => store.address && store.city && !store.error)
 
           if (validStores.length === 0) {
             throw new Error("No valid stores with addresses found to calculate route")
           }
 
-          // Handle route calculation for multiple stores
           try {
-            // Prepare addresses for Google Maps API
             const origin = `${HQ_LOCATION.address}, ${HQ_LOCATION.city}, ${HQ_LOCATION.county}, Romania`
             const destination = `${HQ_LOCATION.address}, ${HQ_LOCATION.city}, ${HQ_LOCATION.county}, Romania`
 
-            // Prepare waypoints based on whether materials pickup is enabled
             let waypoints = []
             if (includeMaterials) {
-              // Add the materials depot as the first waypoint
               waypoints = [
                 `${MATERIALS_DEPOT_LOCATION.address}, ${MATERIALS_DEPOT_LOCATION.city}, ${MATERIALS_DEPOT_LOCATION.county}, Romania`,
                 ...validStores.map((store) => `${store.address}, ${store.city}, ${store.county}, Romania`),
               ]
             } else {
-              // Just use the stores as waypoints
               waypoints = validStores.map((store) => `${store.address}, ${store.city}, ${store.county}, Romania`)
             }
 
@@ -482,21 +507,14 @@ export default function TestAssignmentRoutePage() {
 
               console.log("Google Maps API response:", batchData)
 
-              // Find the section where we process the segments for Google Maps API response
-              // Around line 390-430 where we process the segments to match our expected format
-
-              // Replace the segment processing code with this improved version that properly handles the materials depot
               if (batchData.route && batchData.route.segments) {
                 const processedSegments = batchData.route.segments.map((segment, index) => {
-                  // Determine if this is an HQ segment or materials depot segment
                   const isStartHQ = index === 0 && includeHQ
                   const isEndHQ = index === batchData.route.segments.length - 1 && includeHQ
 
-                  // Special handling for materials depot (store 6666)
                   const isStartMaterialsDepot = includeMaterials && index === 1
-                  const isEndMaterialsDepot = false // We don't end at materials depot
+                  const isEndMaterialsDepot = false
 
-                  // Determine the correct store IDs and names based on the segment position
                   let startStoreId, endStoreId, startName, endName
 
                   if (isStartHQ) {
@@ -506,7 +524,6 @@ export default function TestAssignmentRoutePage() {
                     startStoreId = 6666
                     startName = MATERIALS_DEPOT_LOCATION.description
                   } else {
-                    // For regular stores, calculate the correct index in the storeIds array
                     const storeIndex = includeMaterials ? Math.max(0, index - 2) : Math.max(0, index - 1)
                     startStoreId = storeIds[storeIndex]
                     startName = segment.startName || `Store #${startStoreId}`
@@ -519,7 +536,6 @@ export default function TestAssignmentRoutePage() {
                     endStoreId = 6666
                     endName = MATERIALS_DEPOT_LOCATION.description
                   } else {
-                    // For regular stores, calculate the correct index in the storeIds array
                     const storeIndex = includeMaterials ? Math.max(0, index - 1) : Math.max(0, index)
                     endStoreId = storeIds[Math.min(storeIndex, storeIds.length - 1)]
                     endName = segment.endName || `Store #${endStoreId}`
@@ -540,7 +556,7 @@ export default function TestAssignmentRoutePage() {
                     startLongitude: segment.startLocation?.lng || 0,
                     endLatitude: segment.endLocation?.lat || 0,
                     endLongitude: segment.endLocation?.lng || 0,
-                    polyline: segment.polyline, // Include the polyline for this segment
+                    polyline: segment.polyline,
                   }
                 })
 
@@ -548,15 +564,11 @@ export default function TestAssignmentRoutePage() {
               }
             } catch (error) {
               console.error("Error with Google Maps API:", error)
-
-              // Fall back to direct calculation if Google Maps API fails
               console.log("Falling back to direct distance calculation")
 
-              // Create direct routes between points
               const segments = []
 
               if (includeHQ) {
-                // Add HQ to first store segment
                 const firstStore = validStores[0]
                 const firstStoreCoords = firstStore.coordinates || [0, 0]
 
@@ -586,7 +598,6 @@ export default function TestAssignmentRoutePage() {
                 })
               }
 
-              // Add segments between stores
               for (let i = 0; i < validStores.length - 1; i++) {
                 const startStore = validStores[i]
                 const endStore = validStores[i + 1]
@@ -595,7 +606,6 @@ export default function TestAssignmentRoutePage() {
                 const endCoords = endStore.coordinates || [0, 0]
 
                 const distance = calculateHaversineDistance(startCoords[1], startCoords[0], endCoords[1], endCoords[0])
-
                 const duration = (distance / 60) * 60
 
                 segments.push({
@@ -616,7 +626,6 @@ export default function TestAssignmentRoutePage() {
               }
 
               if (includeHQ) {
-                // Add last store to HQ segment
                 const lastStore = validStores[validStores.length - 1]
                 const lastStoreCoords = lastStore.coordinates || [0, 0]
 
@@ -646,7 +655,6 @@ export default function TestAssignmentRoutePage() {
                 })
               }
 
-              // Calculate total distance and duration
               const totalDistance = segments.reduce((sum, segment) => sum + segment.distance, 0)
               const totalDuration = segments.reduce((sum, segment) => sum + segment.duration, 0)
 
@@ -670,17 +678,13 @@ export default function TestAssignmentRoutePage() {
           }
         }
 
-        // Make sure batchData is defined before setting it as routeResponse
         if (batchData) {
           setRouteResponse(batchData)
 
-          // Automatically save the route to the database if we have a successful route
-          // Pass the assignment data directly instead of relying on the state
           if (batchData.success && batchData.route) {
             await saveRouteToDatabase(assignmentData.id, batchData.route.totalDistance, batchData.route.totalDuration)
           }
         } else {
-          // If batchData is undefined, set an error response
           setRouteResponse({
             success: false,
             error: "Failed to calculate route - no route data returned",
@@ -700,96 +704,7 @@ export default function TestAssignmentRoutePage() {
     }
   }
 
-  // Function to add HQ as start and end points to the route
-  const addHQToRoute = (route: any) => {
-    if (!route || !route.segments || route.segments.length === 0) {
-      return route
-    }
-
-    // Calculate distance from HQ to first store
-    const firstStore = route.segments[0]
-    const firstStoreId = firstStore.startStoreId
-    const firstStoreDistance = calculateHaversineDistance(
-      HQ_LOCATION.coordinates[1], // latitude
-      HQ_LOCATION.coordinates[0], // longitude
-      firstStore.startLatitude || 0, // latitude
-      firstStore.startLongitude || 0, // longitude
-    )
-
-    // Calculate distance from last store to HQ
-    const lastStore = route.segments[route.segments.length - 1]
-    const lastStoreId = lastStore.endStoreId
-    const lastStoreDistance = calculateHaversineDistance(
-      lastStore.endLatitude || 0, // latitude
-      lastStore.endLongitude || 0, // longitude
-      HQ_LOCATION.coordinates[1], // latitude
-      HQ_LOCATION.coordinates[0], // longitude
-    )
-
-    // Estimate travel times (60 km/h average speed)
-    const firstStoreDuration = (firstStoreDistance / 60) * 60 // minutes
-    const lastStoreDuration = (lastStoreDistance / 60) * 60 // minutes
-
-    // Create new segments for HQ to first store and last store to HQ
-    let hqToFirstSegment
-
-    // Special handling for store ID 6666
-    if (firstStoreId === "6666" || firstStoreId === 6666) {
-      hqToFirstSegment = {
-        startStoreId: "HQ",
-        endStoreId: firstStoreId,
-        startName: HQ_LOCATION.description,
-        endName: "Store #6666", // Use a fixed name for this special store
-        startAddress: `${HQ_LOCATION.address}, ${HQ_LOCATION.city}, ${HQ_LOCATION.county}`,
-        endAddress: `${MATERIALS_DEPOT_LOCATION.address}, ${MATERIALS_DEPOT_LOCATION.city}, ${MATERIALS_DEPOT_LOCATION.county}`,
-        distance: Math.round(firstStoreDistance * 10) / 10,
-        duration: Math.round(firstStoreDuration),
-        isHQ: true,
-      }
-    } else {
-      hqToFirstSegment = {
-        startStoreId: "HQ",
-        endStoreId: firstStoreId,
-        startName: HQ_LOCATION.description,
-        endName: firstStore.startName,
-        startAddress: `${HQ_LOCATION.address}, ${HQ_LOCATION.city}, ${HQ_LOCATION.county}`,
-        endAddress: firstStore.startAddress,
-        distance: Math.round(firstStoreDistance * 10) / 10,
-        duration: Math.round(firstStoreDuration),
-        isHQ: true,
-      }
-    }
-
-    const lastToHqSegment = {
-      startStoreId: lastStoreId,
-      endStoreId: "HQ",
-      startName: lastStore.endName,
-      endName: HQ_LOCATION.description,
-      startAddress: lastStore.endAddress,
-      endAddress: `${HQ_LOCATION.address}, ${HQ_LOCATION.city}, ${HQ_LOCATION.county}`,
-      distance: Math.round(lastStoreDistance * 10) / 10,
-      duration: Math.round(lastStoreDuration),
-      isHQ: true,
-    }
-
-    // Add the new segments to the beginning and end of the route
-    const newSegments = [hqToFirstSegment, ...route.segments, lastToHqSegment]
-
-    // Recalculate total distance and duration
-    const totalDistance = newSegments.reduce((sum, segment) => sum + segment.distance, 0)
-    const totalDuration = newSegments.reduce((sum, segment) => sum + segment.duration, 0)
-
-    return {
-      ...route,
-      segments: newSegments,
-      totalDistance: Math.round(totalDistance * 10) / 10,
-      totalDuration: Math.round(totalDuration),
-    }
-  }
-
-  // Function to calculate distance between two points using the Haversine formula
   const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    // Convert latitude and longitude from degrees to radians
     const toRadians = (degrees: number) => (degrees * Math.PI) / 180
 
     const dLat = toRadians(lat2 - lat1)
@@ -800,11 +715,8 @@ export default function TestAssignmentRoutePage() {
       Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-    // Earth radius in kilometers
     const R = 6371
 
-    // Calculate the distance
     return R * c
   }
 
@@ -816,7 +728,6 @@ export default function TestAssignmentRoutePage() {
 
       console.log(`Fetching details for store ID: ${storeId}`)
 
-      // Try the test store API first
       try {
         const res = await fetch(`/api/test/store/${storeId}`)
 
@@ -824,19 +735,16 @@ export default function TestAssignmentRoutePage() {
           const data = await res.json()
 
           if (data.success && data.store) {
-            // Geocode the store address
             const geocodedStore = await geocodeStoreAddress(data.store)
             return geocodedStore
           }
         }
 
-        // If we get here, the test store API failed but didn't throw an error
         console.warn(`Test store API failed for store ${storeId}, trying fallback...`)
       } catch (err) {
         console.warn(`Error with test store API for store ${storeId}, trying fallback...`, err)
       }
 
-      // Try the regular store API as fallback
       try {
         const res = await fetch(`/api/stores/${storeId}`)
 
@@ -852,7 +760,6 @@ export default function TestAssignmentRoutePage() {
             warning: "Used fallback API to fetch store details",
           }
 
-          // Geocode the store address
           const geocodedStore = await geocodeStoreAddress(store)
           return geocodedStore
         } else {
@@ -864,7 +771,6 @@ export default function TestAssignmentRoutePage() {
       }
     } catch (err) {
       console.error(`Error fetching store ${storeId}:`, err)
-      // Return basic info even if fetch fails
       return {
         store_id: storeId,
         description: `Store #${storeId}`,
@@ -877,7 +783,6 @@ export default function TestAssignmentRoutePage() {
     }
   }
 
-  // Update the geocodeStoreAddress function to use Google Maps API
   const geocodeStoreAddress = async (store: Store): Promise<Store> => {
     try {
       if (store.error || (!store.address && !store.city && !store.county)) {
@@ -886,7 +791,6 @@ export default function TestAssignmentRoutePage() {
 
       setProcessingStep(`Geocoding address for store ${store.store_id}...`)
 
-      // Combine address components
       const addressComponents = [store.address, store.city, store.county, "Romania"].filter(Boolean)
 
       if (addressComponents.length === 0) {
@@ -896,7 +800,6 @@ export default function TestAssignmentRoutePage() {
       const fullAddress = addressComponents.join(", ")
       console.log(`Geocoding address for store ${store.store_id}: ${fullAddress}`)
 
-      // Call the Google Maps geocoding API
       try {
         const res = await fetch(`/api/google-maps?address=${encodeURIComponent(fullAddress)}`)
 
@@ -921,7 +824,6 @@ export default function TestAssignmentRoutePage() {
         }
       } catch (err) {
         console.warn(`Error geocoding store ${store.store_id}:`, err)
-        // Return the store without coordinates but don't mark as error
         return {
           ...store,
           geocoded: false,
@@ -936,7 +838,6 @@ export default function TestAssignmentRoutePage() {
     }
   }
 
-  // Format date for display
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "PPP")
@@ -945,7 +846,6 @@ export default function TestAssignmentRoutePage() {
     }
   }
 
-  // Update the getStore function to handle the materials depot
   const getStore = (storeId: number | string) => {
     if (storeId === "HQ") {
       return {
@@ -959,7 +859,6 @@ export default function TestAssignmentRoutePage() {
       }
     }
 
-    // Add special handling for materials depot (store 6666)
     if (storeId === 6666 || storeId === "6666") {
       return {
         store_id: 6666,
@@ -978,7 +877,6 @@ export default function TestAssignmentRoutePage() {
   const saveRouteToDatabase = async (assignmentId: number, totalDistance: number, totalDuration: number) => {
     setSavingToDb(true)
     try {
-      // Use the update-assignment server action instead of a fetch call
       const result = await updateAssignmentDistanceAndDuration(assignmentId, totalDistance, totalDuration)
 
       if (result.success) {
@@ -987,7 +885,6 @@ export default function TestAssignmentRoutePage() {
           description: `Assignment ${assignmentId} updated with distance: ${totalDistance} km and duration: ${totalDuration} minutes`,
         })
 
-        // Update the assignment state with the new values
         setAssignment((prevAssignment) => {
           if (prevAssignment) {
             return {
@@ -1014,19 +911,17 @@ export default function TestAssignmentRoutePage() {
     }
   }
 
-  // Find the handleFinalizeAssignment function and update it to properly pass the assignment ID
-
   const handleFinalizeAssignment = async () => {
+    if (isRedirectingRef.current) return
+
     setIsFinalizingAssignment(true)
     try {
-      // Make sure we're using the correct assignment ID from the state
       if (!assignment || !assignment.id) {
         throw new Error("No assignment selected or assignment ID is missing")
       }
 
       console.log("Finalizing assignment:", assignment.id)
 
-      // Pass the entire assignment object with the ID to the finalization function
       const result = await finalizeAssignmentWithTeam({
         id: assignment.id,
         km: routeResponse?.route?.totalDistance || assignment.km,
@@ -1042,6 +937,15 @@ export default function TestAssignmentRoutePage() {
           description: "Assignment finalized successfully",
         })
         setFinalizationSuccess(true)
+
+        // Hide map immediately to prevent API errors
+        setRouteResponse(null)
+
+        // Set redirecting flag and redirect
+        isRedirectingRef.current = true
+        setTimeout(() => {
+          router.push("/assignments")
+        }, 1500)
       } else {
         throw new Error(result.error || "Failed to finalize assignment")
       }
@@ -1077,15 +981,32 @@ export default function TestAssignmentRoutePage() {
     </svg>
   )
 
+  // Cleanup on unmount to prevent Google Maps errors
+  useEffect(() => {
+    return () => {
+      // Clear any pending timeouts/intervals on unmount
+      isRedirectingRef.current = true
+    }
+  }, [])
+
   return (
     <div className="container mx-auto py-8">
-      {/* Finalization button at the top with toggles */}
-      {routeResponse?.route && !finalizationSuccess && (
+      {autoFinalize && !finalizationSuccess && (
+        <Alert className="mb-6 bg-blue-50 border-blue-200">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+          <AlertTitle>Auto-finalization Mode</AlertTitle>
+          <AlertDescription>
+            Route calculation and finalization will happen automatically. Please wait...
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {routeResponse?.route && !finalizationSuccess && !autoFinalize && (
         <div className="mb-6 flex items-center gap-3">
           <span className="font-medium text-gray-700">Acum poti Finaliza deplasarea ta {assignment?.id}:</span>
           <Button
             onClick={handleFinalizeAssignment}
-            disabled={routeLoading || savingToDb || isFinalizingAssignment}
+            disabled={routeLoading || savingToDb || isFinalizingAssignment || isRedirectingRef.current}
             className="bg-blue-500 hover:bg-blue-600 text-white animate-pulse"
             style={{ animationDuration: "3s" }}
           >
@@ -1105,12 +1026,14 @@ export default function TestAssignmentRoutePage() {
       )}
 
       {finalizationSuccess && (
-        <div className="mb-6 flex items-center gap-3">
-          <span className="font-medium text-gray-700">Acum poti Finaliza deplasarea ta {assignment?.id}:</span>
-          <Button disabled className="bg-blue-500 text-white">
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Finalizat cu Succes
-          </Button>
+        <div className="mb-6">
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <AlertTitle>Success!</AlertTitle>
+            <AlertDescription>
+              Assignment {assignment?.id} has been finalized. Redirecting to assignments page...
+            </AlertDescription>
+          </Alert>
         </div>
       )}
 
@@ -1132,12 +1055,12 @@ export default function TestAssignmentRoutePage() {
                 placeholder=""
                 value={assignmentId}
                 onChange={(e) => setAssignmentId(e.target.value)}
-                disabled={loading || routeLoading}
+                disabled={loading || routeLoading || autoFinalize || isRedirectingRef.current}
                 className="border-blue-200 focus-visible:ring-blue-400"
               />
               <Button
                 onClick={fetchAssignment}
-                disabled={loading || routeLoading}
+                disabled={loading || routeLoading || autoFinalize || isRedirectingRef.current}
                 className="bg-blue-500 hover:bg-blue-600 text-white"
               >
                 {loading ? (
@@ -1172,14 +1095,13 @@ export default function TestAssignmentRoutePage() {
               </Button>
             </div>
 
-            {/* Add the toggles here - moved from the conditional section below */}
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center space-x-2">
                 <Switch
                   id="include-hq"
                   checked={includeHQ}
                   onCheckedChange={setIncludeHQ}
-                  disabled={loading || routeLoading}
+                  disabled={loading || routeLoading || autoFinalize || isRedirectingRef.current}
                   className="data-[state=checked]:bg-blue-500"
                 />
                 <Label htmlFor="include-hq" className="text-xs text-blue-700">
@@ -1192,7 +1114,7 @@ export default function TestAssignmentRoutePage() {
                   id="include-materials"
                   checked={includeMaterials}
                   onCheckedChange={setIncludeMaterials}
-                  disabled={loading || routeLoading}
+                  disabled={loading || routeLoading || autoFinalize || isRedirectingRef.current}
                   className="data-[state=checked]:bg-blue-500"
                 />
                 <Label htmlFor="include-materials" className="text-xs text-blue-700">
@@ -1230,8 +1152,10 @@ export default function TestAssignmentRoutePage() {
         <Alert className="mb-6 bg-blue-50 border-blue-200">
           <div className="flex items-center">
             <Loader2 className="h-4 w-4 mr-2 animate-spin text-blue-500" />
-            <AlertTitle>Processing</AlertTitle>
-            <AlertDescription>{processingStep}</AlertDescription>
+            <div className="flex-1">
+              <AlertTitle>Processing</AlertTitle>
+              <AlertDescription>{processingStep}</AlertDescription>
+            </div>
           </div>
         </Alert>
       )}
@@ -1289,13 +1213,21 @@ export default function TestAssignmentRoutePage() {
                         </div>
                       </div>
 
-                      {/* Map without title */}
                       <div>
-                        <GoogleMapRoute
-                          segments={routeResponse.route.segments}
-                          polyline={routeResponse.route.polyline}
-                          height="400px"
-                        />
+                        {isRedirectingRef.current ? (
+                          <div className="h-[400px] flex items-center justify-center bg-muted rounded-lg">
+                            <div className="text-center">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">Redirecting to assignments...</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <GoogleMapRoute
+                            segments={routeResponse.route.segments}
+                            polyline={routeResponse.route.polyline}
+                            height="400px"
+                          />
+                        )}
                       </div>
 
                       <Separator />

@@ -4,9 +4,11 @@ import { useEffect, useState, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { getWorkDistributionByType } from "@/app/actions/work-logs"
 import Link from "next/link"
-import { motion, MotionConfig, useInView } from "motion/react"
+import { motion, MotionConfig, useInView } from "framer-motion"
 import { SpringNumberFlow } from "@/components/ui/spring-number-flow"
 import useCycle from "@/hooks/use-cycle"
+import { Clock, MapPin, Users } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 type WorkDistributionData = {
   type: string
@@ -22,17 +24,26 @@ type WorkDistributionProps = {
   distribution?: WorkDistributionData[]
 }
 
+type WorkType = {
+  type: string
+  count: number
+  total_hours: number
+  avg_hours: number
+}
+
 // Create motion-enabled Link
-const MotionLink = motion.create(Link)
+const MotionLink = motion(Link)
 
 export function WorkDistribution({ startDate, endDate, distribution }: WorkDistributionProps) {
   const [data, setData] = useState<WorkDistributionData[]>([])
   const [loading, setLoading] = useState(true)
-
-  // useCycle for dynamic animations - but only when user interacts
-  const [animationTrigger, cycleAnimation] = useCycle([0, 1, 2, 3, 4])
+  const [workTypes, setWorkTypes] = useState<WorkType[]>([])
+  const searchParams = useSearchParams()
+  const type = searchParams.get("type")
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true })
+  const [animationTrigger, setAnimationTrigger] = useState(0)
+  const cycleAnimation = useCycle(setAnimationTrigger, [0, 1])
 
   useEffect(() => {
     if (distribution) {
@@ -58,6 +69,16 @@ export function WorkDistribution({ startDate, endDate, distribution }: WorkDistr
 
     fetchData()
   }, [startDate, endDate, distribution])
+
+  useEffect(() => {
+    async function fetchWorkTypes() {
+      const res = await fetch(`/api/work-type-details`)
+      const data = await res.json()
+      setWorkTypes(data)
+    }
+
+    fetchWorkTypes()
+  }, [])
 
   const getHoursForType = (type: string): number => {
     const item = data.find((item) => item.type === type)
@@ -129,6 +150,9 @@ export function WorkDistribution({ startDate, endDate, distribution }: WorkDistr
       href: "/dashboard/type?type=BurgerKing",
     },
   ]
+
+  const cardWidth = "w-40" // Base width
+  const cardHeight = "h-32" // Base height
 
   return (
     <Card className="col-span-1 md:col-span-2" ref={ref}>
@@ -228,6 +252,33 @@ export function WorkDistribution({ startDate, endDate, distribution }: WorkDistr
             </motion.div>
           </MotionConfig>
         )}
+        <h2 className="text-xl font-bold mb-4">Work Distribution - Assignment types</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {workTypes.map((item) => (
+            <div
+              key={item.type}
+              className={`${cardWidth} ${cardHeight} flex flex-col justify-between p-4 border-l-4 rounded-md shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900 dark:hover:bg-gray-800`}
+            >
+              <a href={`/dashboard/type?type=${item.type}`} className="hover:underline">
+                <h3 className="text-lg font-semibold mb-2">{item.type}</h3>
+              </a>
+              <div>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  <span>{item.count} Assignments</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span>{item.total_hours} Total Hours</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <Users className="h-4 w-4 mr-1" />
+                  <span>{item.avg_hours.toFixed(1)} Avg. Hours</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
