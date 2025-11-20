@@ -775,6 +775,9 @@ export async function finalizeAssignmentWithTeam(assignment: any) {
     // Step 7: Determine hours value
     let hours = 0
 
+    const manualFinalizationDate = new Date().toISOString()
+    console.log(`[DEBUG] Manual finalization time: ${manualFinalizationDate}`)
+
     // If we have real start and completion dates, calculate hours based on those
     if (realStartDate && realCompletionDate) {
       const startTime = new Date(realStartDate).getTime()
@@ -783,23 +786,22 @@ export async function finalizeAssignmentWithTeam(assignment: any) {
       hours = Math.max(1, Math.ceil(durationInHours))
       console.log(`[DEBUG] Calculated ${hours} hours from real timestamps`)
     } else {
-      // Calculate hours based on start and completion dates from the database
+      // Calculate hours based on start date and CURRENT TIME (manual finalization)
       const startTime = new Date(assignmentData.start_date).getTime()
-      const endTime = new Date(assignmentData.completion_date || new Date()).getTime()
+      const endTime = new Date(manualFinalizationDate).getTime()
       const durationInHours = (endTime - startTime) / (1000 * 60 * 60)
       hours = Math.max(1, Math.ceil(durationInHours))
-      console.log(`[DEBUG] Calculated ${hours} hours from start and completion dates`)
+      console.log(`[DEBUG] Calculated ${hours} hours from start date to current time (manual finalization)`)
     }
 
     console.log(`[DEBUG] Final hours value to be saved: ${hours}`)
 
     // Step 8: Update assignment status and dates
-    // Use real timestamps if available, otherwise fall back to provided values
     const finalStartDate = realStartDate || assignmentData.start_date
-    const finalCompletionDate = realCompletionDate || assignment.completion_date || new Date().toISOString()
+    const finalCompletionDate = manualFinalizationDate // Always use current time for manual finalization
 
     console.log(
-      `[DEBUG] Updating assignment with final values: status=Finalizat, hours=${hours}, km=${km}, driving_time=${drivingTime}`,
+      `[DEBUG] Updating assignment with final values: status=Finalizat, hours=${hours}, km=${km}, driving_time=${drivingTime}, completion_date=${finalCompletionDate}`,
     )
 
     await query(
@@ -815,7 +817,7 @@ export async function finalizeAssignmentWithTeam(assignment: any) {
       [
         "Finalizat", // Always set to "Finalizat"
         finalStartDate,
-        finalCompletionDate,
+        finalCompletionDate, // Always use current time
         assignment.end_location || assignmentData.end_location || "Chitila, Romania",
         hours,
         km,
@@ -823,7 +825,7 @@ export async function finalizeAssignmentWithTeam(assignment: any) {
         assignment.id,
       ],
     )
-    console.log(`[DEBUG] Assignment updated successfully with real timestamps`)
+    console.log(`[DEBUG] Assignment updated successfully with manual finalization time`)
 
     // Step 9: Create work logs for team lead and members
     // First, ensure we have valid team members
@@ -883,7 +885,7 @@ export async function finalizeAssignmentWithTeam(assignment: any) {
     }
 
     revalidatePath("/assignments")
-    console.log(`[DEBUG] Finalization completed successfully with real timestamps`)
+    console.log(`[DEBUG] Finalization completed successfully with manual finalization time`)
 
     return {
       success: true,

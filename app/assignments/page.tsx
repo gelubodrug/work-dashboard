@@ -48,8 +48,8 @@ import { deleteAssignment } from "@/app/actions/delete-assignment"
 
 // License Plate Component
 function LicensePlate({ plate, color = "gr" }: { plate: string; color?: string }) {
-  const bgColor = color === "gr" ? "bg-gray-100" : "bg-blue-100"
-  const textColor = color === "gr" ? "text-gray-800" : "text-blue-800"
+  const bgColor = color === "gr" ? "bg-gray-100 dark:bg-gray-800" : "bg-blue-100 dark:bg-blue-900"
+  const textColor = color === "gr" ? "text-gray-800 dark:text-gray-100" : "text-blue-800 dark:text-blue-100"
 
   return <div className={`${bgColor} ${textColor} text-xs font-medium px-2 py-0.5 rounded-md`}>{plate}</div>
 }
@@ -82,8 +82,8 @@ function TypeFilters({
           onClick={() => setActiveFilter(filter.value)}
           className={`h-6 px-2 text-xs rounded-full ${
             activeFilter === filter.value
-              ? "bg-blue-100 text-blue-800 border-blue-200"
-              : "bg-gray-50 text-gray-600 border-gray-200"
+              ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700"
+              : "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
           }`}
         >
           {filter.label}
@@ -127,13 +127,13 @@ const calculateDuration = (dateString: string) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     case "Finalizat":
-      return "bg-green-100 text-green-800 border-green-200"
+      return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
     case "In Deplasare":
-      return "bg-blue-100 text-blue-800 border-blue-200"
+      return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700"
     case "Anulat":
-      return "bg-red-100 text-red-800 border-red-200"
+      return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
     default:
-      return "bg-gray-100 text-gray-800 border-gray-200"
+      return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
   }
 }
 
@@ -141,17 +141,17 @@ const getStatusColor = (status: string) => {
 const getTypeColor = (type: string) => {
   switch (type) {
     case "Interventie":
-      return "bg-blue-100 text-blue-800 border-blue-200"
+      return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700"
     case "Optimizare":
-      return "bg-orange-100 text-orange-800 border-orange-200"
+      return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900 dark:text-orange-100 dark:border-orange-700"
     case "Deschidere":
-      return "bg-green-100 text-green-800 border-green-200"
+      return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
     case "Froo":
-      return "bg-purple-100 text-purple-800 border-purple-200"
+      return "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900 dark:text-purple-100 dark:border-purple-700"
     case "BurgerKing":
-      return "bg-red-100 text-red-800 border-red-200"
+      return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
     default:
-      return "bg-purple-100 text-purple-800 border-purple-200"
+      return "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900 dark:text-purple-100 dark:border-purple-700"
   }
 }
 
@@ -521,7 +521,7 @@ export default function AssignmentsPage() {
                               </div>
                               {assignment.team_lead && (
                                 <div className="flex items-center">
-                                  <Users className="h-4 w-4 mr-2 text-gray-400" />
+                                  <Users className="h-4 w-4 mr-2 text-muted-foreground" />
                                   <TeamMemberAvatars members={[assignment.team_lead]} showNames />
                                 </div>
                               )}
@@ -538,7 +538,7 @@ export default function AssignmentsPage() {
 
                           {members.length > 0 && (
                             <div className="flex items-center">
-                              <Users className="h-4 w-4 mr-2 text-gray-400" />
+                              <Users className="h-4 w-4 mr-2 text-muted-foreground" />
                               <TeamMemberAvatars members={members} showNames={true} />
                             </div>
                           )}
@@ -546,12 +546,14 @@ export default function AssignmentsPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="flex items-center">
-                                <PlayCircle className="h-4 w-4 mr-1 text-gray-400" />
-                                <span className="text-xs">{formatTime(assignment.start_date)}</span>
+                                <PlayCircle className="h-4 w-4 mr-1 text-muted-foreground" />
+                                <span className="text-xs text-foreground">{formatTime(assignment.start_date)}</span>
                               </div>
                               <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1 text-gray-400" />
-                                <span className="text-xs">{calculateDuration(assignment.start_date)}</span>
+                                <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+                                <span className="text-xs text-foreground">
+                                  {calculateDuration(assignment.start_date)}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -676,17 +678,17 @@ export default function AssignmentsPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 text-xs">
-                            <PlayCircle className="h-4 w-4 text-gray-400" />
+                          <div className="flex items-center gap-2 text-xs text-foreground">
+                            <PlayCircle className="h-4 w-4 text-muted-foreground" />
                             <span>{formatTime(assignment.start_date)}</span>
-                            <StopCircle className="h-4 w-4 text-gray-400" />
+                            <StopCircle className="h-4 w-4 text-muted-foreground" />
                             <span>{formatTime(assignment.completion_date)}</span>
-                            <Clock className="h-4 w-4 text-gray-400" />
+                            <Clock className="h-4 w-4 text-muted-foreground" />
                             <span>{assignment.hours}h</span>
                           </div>
 
                           {assignment.km && (
-                            <div className="text-xs text-gray-600">
+                            <div className="text-xs text-muted-foreground">
                               Distance: {Number.parseFloat(assignment.km).toFixed(1)} km
                             </div>
                           )}

@@ -4,7 +4,7 @@ import { useState, useCallback, createContext, useContext, useRef, useEffect } f
 import type React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Home, Users, MapPin, Route } from "lucide-react"
+import { Home, MapPin, Route } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { VersionChecker } from "@/components/version-checker"
 import { usePathname, useRouter } from "next/navigation"
@@ -30,7 +30,6 @@ export function AppShell({ children }: AppShellProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [isHeaderVisible, setIsHeaderVisible] = useState(true)
-  const [isFooterVisible, setIsFooterVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
@@ -64,20 +63,17 @@ export function AppShell({ children }: AppShellProps) {
 
       // Only update if we've scrolled enough to matter
       if (scrollDifference > scrollThreshold) {
-        // At the very top of the page, always show header and footer
+        // At the very top of the page, always show header
         if (currentScrollY < 10) {
           setIsHeaderVisible(true)
-          setIsFooterVisible(true)
         } else {
-          // When scrolling down, hide header and footer
+          // When scrolling down, hide header
           if (isScrollingDown) {
             setIsHeaderVisible(false)
-            setIsFooterVisible(false)
           }
-          // When scrolling up, show header and footer
+          // When scrolling up, show header
           else {
             setIsHeaderVisible(true)
-            setIsFooterVisible(true)
           }
         }
 
@@ -105,9 +101,6 @@ export function AppShell({ children }: AppShellProps) {
   // Add after existing state declarations
   const [isDashboardLongPress, setIsDashboardLongPress] = useState(false)
   const dashboardLongPressTimer = useRef<NodeJS.Timeout | null>(null)
-  // Add after existing state declarations
-  const [isUsersLongPress, setIsUsersLongPress] = useState(false)
-  const usersLongPressTimer = useRef<NodeJS.Timeout | null>(null)
 
   const handleRouteMouseDown = () => {
     // Start timer for long press
@@ -175,35 +168,6 @@ export function AppShell({ children }: AppShellProps) {
     router.push("/dashboard-error")
   }
 
-  const handleUsersMouseDown = () => {
-    setIsUsersLongPress(false)
-    // Start timer for long press (4 seconds)
-    usersLongPressTimer.current = setTimeout(() => {
-      setIsUsersLongPress(true)
-      router.push("/internal-user-status-v2")
-    }, 4000) // 4 seconds for long press
-  }
-
-  const handleUsersMouseUp = () => {
-    // Clear the timer if mouse is released before long press threshold
-    if (usersLongPressTimer.current) {
-      clearTimeout(usersLongPressTimer.current)
-      usersLongPressTimer.current = null
-    }
-  }
-
-  const handleUsersClick = (e: React.MouseEvent) => {
-    // If it was a long press, don't navigate to simple page
-    if (isUsersLongPress) {
-      setIsUsersLongPress(false)
-      return
-    }
-
-    // Regular click - go to simple users page
-    e.preventDefault()
-    router.push("/users")
-  }
-
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -215,9 +179,6 @@ export function AppShell({ children }: AppShellProps) {
       }
       if (dashboardLongPressTimer.current) {
         clearTimeout(dashboardLongPressTimer.current)
-      }
-      if (usersLongPressTimer.current) {
-        clearTimeout(usersLongPressTimer.current)
       }
     }
   }, [])
@@ -258,9 +219,7 @@ export function AppShell({ children }: AppShellProps) {
           <div className="container mx-auto px-1 sm:px-2 py-2 sm:py-4 min-w-[300px]">{children}</div>
         </main>
 
-        <nav
-          className={`sticky bottom-0 z-10 bg-gray-100/90 backdrop-blur-sm border-t border-gray-200 dark:bg-gray-800/90 dark:border-gray-700 transition-transform duration-200 ease-out ${isFooterVisible ? "translate-y-0" : "translate-y-full"}`}
-        >
+        <nav className="sticky bottom-0 z-10 bg-gray-100/90 backdrop-blur-sm border-t border-gray-200 dark:bg-gray-800/90 dark:border-gray-700">
           <div className="container mx-auto px-4">
             <div className="flex justify-around py-2">
               <div
@@ -274,18 +233,6 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <Home className="h-6 w-6" strokeWidth={1.5} />
                 <span className="text-xs mt-1">Dashboard</span>
-              </div>
-              <div
-                className="flex flex-col items-center p-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white cursor-pointer"
-                onMouseDown={handleUsersMouseDown}
-                onMouseUp={handleUsersMouseUp}
-                onMouseLeave={handleUsersMouseUp}
-                onTouchStart={handleUsersMouseDown}
-                onTouchEnd={handleUsersMouseUp}
-                onClick={handleUsersClick}
-              >
-                <Users className="h-6 w-6" strokeWidth={1.5} />
-                <span className="text-xs mt-1">Users</span>
               </div>
               <Link
                 href="/assignments"
