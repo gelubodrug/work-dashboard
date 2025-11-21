@@ -36,7 +36,7 @@ export function GPSTimestamps({ gpsStartDate, gpsCompletionDate, returnTime }: G
         {/* Grey GPS icon */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-3 w-3 text-gray-400"
+          className="h-3 w-3 text-slate-400 dark:text-slate-400"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -50,13 +50,11 @@ export function GPSTimestamps({ gpsStartDate, gpsCompletionDate, returnTime }: G
           <circle cx="12" cy="9" r="2.5" />
         </svg>
 
-        {/* Day badge */}
-        <div className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[11px] font-medium">
+        <div className="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-[11px] font-medium">
           {formatDay(gpsStartDate)}
         </div>
 
-        {/* GO time */}
-        <div className="min-w-[80px] px-2 py-0.5 bg-green-50 text-green-700 rounded border border-green-200 font-medium text-[11px] text-center">
+        <div className="min-w-[80px] px-2 py-0.5 bg-emerald-100 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 rounded border border-emerald-300 dark:border-emerald-500/30 font-medium text-[11px] text-center">
           GO {formatGPSTime(gpsStartDate)}
         </div>
       </div>
@@ -66,13 +64,11 @@ export function GPSTimestamps({ gpsStartDate, gpsCompletionDate, returnTime }: G
         {/* Empty space instead of icon */}
         <div className="w-3" />
 
-        {/* Day badge */}
-        <div className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[11px] font-medium">
+        <div className="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-[11px] font-medium">
           {formatDay(displayReturnTime)}
         </div>
 
-        {/* IN time (AMBER now) */}
-        <div className="min-w-[80px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200 font-medium text-[11px] text-center">
+        <div className="min-w-[80px] px-2 py-0.5 bg-orange-100 dark:bg-orange-600/20 text-orange-700 dark:text-orange-400 rounded border border-orange-300 dark:border-orange-500/30 font-medium text-[11px] text-center">
           IN {formatGPSTime(displayReturnTime)}
         </div>
       </div>

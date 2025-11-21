@@ -7,11 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import {
-  Plus,
-  Search,
-  RefreshCw,
   MapPin,
   Clock,
   AlertCircle,
@@ -25,13 +21,12 @@ import {
   Route,
   PlayCircle,
   StopCircle,
+  Plus,
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { format, parseISO, differenceInHours, formatDistanceToNow } from "date-fns"
 import { TeamMemberAvatars } from "@/components/team-member-avatars"
-import { AssignmentKmCell } from "@/components/assignment-km-cell"
 import { GPSTimestamps } from "@/components/gps-timestamps"
-import { ConfirmFinalizeDialog } from "@/components/confirm-finalize-dialog"
 import { RoutePointsDisplay } from "@/components/route-points-display"
 import { finalizeAssignmentWithTeam, manuallyCalculateRoute } from "@/app/actions/assignments"
 
@@ -42,16 +37,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
 import { deleteAssignment } from "@/app/actions/delete-assignment"
 
 // License Plate Component
 function LicensePlate({ plate, color = "gr" }: { plate: string; color?: string }) {
-  const bgColor = color === "gr" ? "bg-gray-100 dark:bg-gray-800" : "bg-blue-100 dark:bg-blue-900"
-  const textColor = color === "gr" ? "text-gray-800 dark:text-gray-100" : "text-blue-800 dark:text-blue-100"
+  const bgColor = color === "gr" ? "bg-slate-700 dark:bg-slate-700/80" : "bg-blue-900/50 dark:bg-blue-900/50"
+  const textColor = color === "gr" ? "text-slate-200 dark:text-slate-200" : "text-blue-300 dark:text-blue-300"
 
-  return <div className={`${bgColor} ${textColor} text-xs font-medium px-2 py-0.5 rounded-md`}>{plate}</div>
+  return <div className={`${bgColor} ${textColor} text-xs font-mono font-medium px-2 py-0.5 rounded`}>{plate}</div>
 }
 
 // Move TypeFilters component outside of AssignmentsPage
@@ -73,7 +66,7 @@ function TypeFilters({
 
   return (
     <div className="flex flex-wrap gap-1 my-2">
-      <Filter className="h-3 w-3 text-blue-400 mr-1 self-center" />
+      <Filter className="h-3 w-3 text-slate-400 dark:text-slate-500 mr-1 self-center" />
       {filters.map((filter) => (
         <Button
           key={filter.value}
@@ -82,8 +75,8 @@ function TypeFilters({
           onClick={() => setActiveFilter(filter.value)}
           className={`h-6 px-2 text-xs rounded-full ${
             activeFilter === filter.value
-              ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700"
-              : "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
+              ? "bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700"
+              : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
           }`}
         >
           {filter.label}
@@ -127,13 +120,13 @@ const calculateDuration = (dateString: string) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     case "Finalizat":
-      return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
+      return "bg-green-900/40 text-green-400 border-green-800/50 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800/50"
     case "In Deplasare":
-      return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700"
+      return "bg-blue-600 text-blue-50 border-blue-700 dark:bg-blue-600 dark:text-blue-50 dark:border-blue-700"
     case "Anulat":
-      return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
+      return "bg-red-900/40 text-red-400 border-red-800/50 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800/50"
     default:
-      return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+      return "bg-slate-800/50 text-slate-300 border-slate-700/50 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50"
   }
 }
 
@@ -141,17 +134,17 @@ const getStatusColor = (status: string) => {
 const getTypeColor = (type: string) => {
   switch (type) {
     case "Interventie":
-      return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700"
+      return "bg-blue-600 text-blue-50 border-blue-700 dark:bg-blue-600 dark:text-blue-50 dark:border-blue-700"
     case "Optimizare":
-      return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900 dark:text-orange-100 dark:border-orange-700"
+      return "bg-orange-900/40 text-orange-400 border-orange-800/50 dark:bg-orange-900/40 dark:text-orange-400 dark:border-orange-800/50"
     case "Deschidere":
-      return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
+      return "bg-green-800/50 text-green-300 border-green-700/50 dark:bg-green-800/50 dark:text-green-300 dark:border-green-700/50"
     case "Froo":
-      return "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900 dark:text-purple-100 dark:border-purple-700"
+      return "bg-purple-900/40 text-purple-400 border-purple-800/50 dark:bg-purple-900/40 dark:text-purple-400 dark:border-purple-800/50"
     case "BurgerKing":
-      return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
+      return "bg-red-900/40 text-red-400 border-red-800/50 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800/50"
     default:
-      return "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900 dark:text-purple-100 dark:border-purple-700"
+      return "bg-purple-900/40 text-purple-400 border-purple-800/50 dark:bg-purple-900/40 dark:text-purple-400 dark:border-purple-800/50"
   }
 }
 
@@ -411,14 +404,6 @@ export default function AssignmentsPage() {
   return (
     <AppShell>
       <div className="container mx-auto py-6 max-w-5xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-bold">Deplasari</h1>
-          <Button className="bg-blue-500 hover:bg-blue-600 text-white" onClick={() => router.push("/deplasareform")}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Assignment
-          </Button>
-        </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex justify-between items-center mb-4">
             <TabsList className="grid grid-cols-2 w-[200px]">
@@ -426,36 +411,16 @@ export default function AssignmentsPage() {
               <TabsTrigger value="completed">Completed</TabsTrigger>
             </TabsList>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchAssignments}
-              disabled={isLoading}
-              className="h-8 bg-transparent"
+            <button
+              onClick={() => router.push("/deplasareform")}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors font-medium text-sm"
             >
-              {isLoading ? (
-                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1"></div>
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-1" />
-              )}
-              Refresh
-            </Button>
+              <Plus className="h-4 w-4" />
+              <span>New</span>
+            </button>
           </div>
 
-          {/* Search and filters */}
-          <div className="mb-4 space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by store number, city, county, or team lead..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-
-            <TypeFilters activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-          </div>
+          <TypeFilters activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
 
           <TabsContent value="active" className="mt-0">
             {isLoading ? (
@@ -485,16 +450,16 @@ export default function AssignmentsPage() {
                   return (
                     <Card
                       key={assignment.id}
-                      className="overflow-hidden shadow-sm border border-gray-100 rounded-lg w-full"
+                      className="overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700/50 rounded-lg w-full bg-white dark:bg-slate-900/50"
                     >
                       <CardContent className="p-4">
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center justify-between">
                             <div className="flex flex-col">
-                              <CardTitle className="text-sm">
+                              <CardTitle className="text-sm text-foreground">
                                 {assignment.city} - {assignment.store_number}
                               </CardTitle>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
                                 id: {assignment.id} from{" "}
                                 {formatDistanceToNow(parseISO(assignment.start_date), { addSuffix: true })}
                               </div>
@@ -512,6 +477,8 @@ export default function AssignmentsPage() {
                               </Badge>
                             </div>
                           </div>
+
+                          <div className="border-t border-slate-200 dark:border-slate-700/50 my-2" />
 
                           <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-1 items-start">
@@ -543,33 +510,20 @@ export default function AssignmentsPage() {
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center">
-                                <PlayCircle className="h-4 w-4 mr-1 text-muted-foreground" />
-                                <span className="text-xs text-foreground">{formatTime(assignment.start_date)}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                                <span className="text-xs text-foreground">
-                                  {calculateDuration(assignment.start_date)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+                          <div className="border-t border-slate-200 dark:border-slate-700/50 my-3" />
 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AssignmentKmCell
-                                assignmentId={assignment.id}
-                                km={assignment.km}
-                                drivingTime={assignment.driving_time}
-                                onRecalculate={handleRecalculateDistance}
-                                isRecalculating={isRecalculating && selectedAssignmentId === assignment.id}
-                                recalculationResult={
-                                  selectedAssignmentId === assignment.id ? recalculationResult : null
-                                }
-                              />
+                              <div className="flex items-center">
+                                <PlayCircle className="h-4 w-4 mr-1 text-slate-400" />
+                                <span className="text-xs text-slate-300">{formatTime(assignment.start_date)}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 mr-1 text-slate-400" />
+                                <span className="text-xs text-slate-300">
+                                  {calculateDuration(assignment.start_date)}
+                                </span>
+                              </div>
                             </div>
 
                             <div className="flex gap-2 items-center">
@@ -657,11 +611,14 @@ export default function AssignmentsPage() {
                     typeof assignment.members === "string" ? JSON.parse(assignment.members) : assignment.members || []
 
                   return (
-                    <Card key={assignment.id} className="overflow-hidden border border-gray-200">
+                    <Card
+                      key={assignment.id}
+                      className="overflow-hidden border border-slate-200 dark:border-slate-700/50 rounded-lg w-full bg-white dark:bg-slate-900/50"
+                    >
                       <CardContent className="p-4">
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm">
+                            <CardTitle className="text-sm text-foreground">
                               {assignment.city} - {assignment.store_number}
                             </CardTitle>
                             <div className="flex items-center gap-1">
@@ -678,12 +635,14 @@ export default function AssignmentsPage() {
                             </div>
                           </div>
 
+                          <div className="border-t border-slate-200 dark:border-slate-700/50 my-2" />
+
                           <div className="flex items-center gap-2 text-xs text-foreground">
-                            <PlayCircle className="h-4 w-4 text-muted-foreground" />
+                            <PlayCircle className="h-4 w-4 text-slate-400 dark:text-slate-400" />
                             <span>{formatTime(assignment.start_date)}</span>
-                            <StopCircle className="h-4 w-4 text-muted-foreground" />
+                            <StopCircle className="h-4 w-4 text-slate-400 dark:text-slate-400" />
                             <span>{formatTime(assignment.completion_date)}</span>
-                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <Clock className="h-4 w-4 text-slate-400 dark:text-slate-400" />
                             <span>{assignment.hours}h</span>
                           </div>
 
@@ -701,37 +660,6 @@ export default function AssignmentsPage() {
             )}
           </TabsContent>
         </Tabs>
-
-        {/* Finalization confirmation dialog */}
-        <ConfirmFinalizeDialog
-          open={isConfirmFinalizeOpen}
-          onOpenChange={setIsConfirmFinalizeOpen}
-          onConfirm={confirmFinalize}
-          isSubmitting={isSubmitting}
-          title="Finalize Assignment"
-          description={`Are you sure you want to finalize assignment ${selectedAssignment?.id}?`}
-          assignmentId={selectedAssignment?.id || 0}
-          km={selectedAssignment?.km || 0}
-          realStartDate={selectedAssignment?.gps_start_date}
-          realCompletionDate={selectedAssignment?.return_time}
-          assignmentType={selectedAssignment?.type}
-        />
-
-        {/* Delete confirmation dialog */}
-        <ConfirmDeleteDialog
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-          onConfirm={handleDeleteAssignment}
-          isSubmitting={isSubmitting}
-          title="Delete Assignment"
-          description="Are you sure you want to delete this assignment? This action cannot be undone."
-          requirePassword={true}
-          itemDetails={
-            selectedAssignment
-              ? `ID: ${selectedAssignment.id} | ${selectedAssignment.city}, ${selectedAssignment.county}`
-              : undefined
-          }
-        />
       </div>
     </AppShell>
   )
