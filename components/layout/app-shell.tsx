@@ -44,7 +44,7 @@ export function AppShell({ children }: AppShellProps) {
         </main>
 
         <div className="fixed bottom-4 left-4 right-4 z-50">
-          <div className="max-w-2xl mx-auto bg-background/95 backdrop-blur-lg border border-border rounded-full shadow-2xl px-4 py-3">
+          <div className="max-w-2xl mx-auto bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full shadow-lg px-4 py-3">
             <div className="flex items-center gap-3">
               <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
 
@@ -59,7 +59,7 @@ export function AppShell({ children }: AppShellProps) {
                 className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
                   pathname === "/assignments"
                     ? "bg-blue-600 text-white"
-                    : "bg-slate-700 dark:bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    : "bg-gray-300 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-400 dark:hover:bg-slate-600"
                 }`}
                 aria-label="Deplasari"
               >
@@ -71,7 +71,7 @@ export function AppShell({ children }: AppShellProps) {
                 className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
                   pathname === "/test/assignment-route"
                     ? "bg-blue-600 text-white"
-                    : "bg-slate-700 dark:bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    : "bg-gray-300 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-400 dark:hover:bg-slate-600"
                 }`}
                 aria-label="Route"
               >
@@ -80,7 +80,7 @@ export function AppShell({ children }: AppShellProps) {
 
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-700 dark:bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center transition-colors"
+                className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-300 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-400 dark:hover:bg-slate-600 flex items-center justify-center transition-colors"
                 aria-label="Toggle theme"
               >
                 {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
