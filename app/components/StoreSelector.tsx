@@ -1,14 +1,12 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search, Loader2 } from "lucide-react"
+import { Search, Loader2, X } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
-import { X } from "lucide-react"
 
 interface Store {
   store_id: number | string
@@ -20,14 +18,67 @@ interface Store {
 
 interface StoreSelectorProps {
   onStoreSelect: (storeId: number | null, storeData?: Store) => void
+  onStoreNotFound?: () => void // New callback when store is not found after auto-search
+  initialStoreId?: string | null
 }
 
-export function StoreSelector({ onStoreSelect }: StoreSelectorProps) {
-  const [searchTerm, setSearchTerm] = useState("")
+export function StoreSelector({ onStoreSelect, onStoreNotFound, initialStoreId }: StoreSelectorProps) {
+  const [searchTerm, setSearchTerm] = useState(initialStoreId || "")
   const [searchResults, setSearchResults] = useState<Store[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedStore, setSelectedStore] = useState<Store | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [hasSearched, setHasSearched] = useState(false)
+
+  useEffect(() => {
+    if (searchTerm.length === 4 && /^\d{4}$/.test(searchTerm)) {
+      searchStoreById(searchTerm)
+    }
+  }, [searchTerm])
+
+  const searchStoreById = async (storeId: string) => {
+    setIsSearching(true)
+    setHasSearched(true)
+
+    try {
+      const response = await fetch(`/api/stores/direct-search?id=${storeId}`)
+
+      if (response.ok) {
+        const storeData = await response.json()
+        if (storeData && storeData.length > 0) {
+          const store = storeData[0]
+          setSelectedStore(store)
+          onStoreSelect(Number(store.store_id), store)
+
+          toast({
+            title: "Magazin găsit",
+            description: `${store.description} - ${store.city}, ${store.county}`,
+          })
+        } else {
+          setSelectedStore(null)
+          onStoreSelect(null)
+          if (onStoreNotFound) {
+            onStoreNotFound()
+          }
+        }
+      } else {
+        setSelectedStore(null)
+        onStoreSelect(null)
+        if (onStoreNotFound) {
+          onStoreNotFound()
+        }
+      }
+    } catch (error) {
+      console.error("Error searching store:", error)
+      setSelectedStore(null)
+      onStoreSelect(null)
+      if (onStoreNotFound) {
+        onStoreNotFound()
+      }
+    } finally {
+      setIsSearching(false)
+    }
+  }
 
   // Function to search for stores
   const searchStores = async () => {
@@ -41,38 +92,6 @@ export function StoreSelector({ onStoreSelect }: StoreSelectorProps) {
     setSearchResults([])
 
     try {
-      // First try to search by store ID if the search term is a 4-digit number
-      if (/^\d{4}$/.test(searchTerm)) {
-        const storeId = searchTerm
-        try {
-          const storeResponse = await fetch(`/api/stores/direct-search?id=${storeId}`)
-
-          if (storeResponse.ok) {
-            const storeData = await storeResponse.json()
-            if (storeData && storeData.length > 0) {
-              // Automatically select the store if found by exact ID
-              const store = storeData[0]
-              setSelectedStore(store)
-              onStoreSelect(Number(store.store_id), store)
-              setSearchResults([])
-
-              toast({
-                title: "Magazin selectat automat",
-                description: `Magazinul ${store.description} a fost găsit și selectat.`,
-              })
-
-              setIsSearching(false)
-              return
-            }
-          } else {
-            console.error(`Store ID search failed with status: ${storeResponse.status}`)
-          }
-        } catch (idError) {
-          console.error("Error searching by store ID:", idError)
-          // Continue to general search if ID search fails
-        }
-      }
-
       // If not found by ID or not a 4-digit number, search by description/location
       const response = await fetch(`/api/stores/search?term=${encodeURIComponent(searchTerm)}`)
 
@@ -176,10 +195,20 @@ export function StoreSelector({ onStoreSelect }: StoreSelectorProps) {
             <Input
               id="storeSearch"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value
+                if (/^\d*$/.test(value) && value.length <= 4) {
+                  setSearchTerm(value)
+                  setHasSearched(false)
+                  if (value.length < 4) {
+                    setSelectedStore(null)
+                  }
+                }
+              }}
               onKeyDown={handleKeyDown}
               placeholder="exemplu: 3085"
-              className="pr-8"
+              className="pr-8 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+              maxLength={4}
             />
             {isSearching && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
@@ -192,6 +221,7 @@ export function StoreSelector({ onStoreSelect }: StoreSelectorProps) {
           </Button>
         </div>
         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        <p className="text-xs text-muted-foreground mt-1.5">Căutare automată după 4 cifre</p>
       </div>
 
       {searchResults.length > 0 && (
@@ -235,6 +265,8 @@ export function StoreSelector({ onStoreSelect }: StoreSelectorProps) {
               size="sm"
               onClick={() => {
                 setSelectedStore(null)
+                setSearchTerm("")
+                setHasSearched(false)
                 onStoreSelect(null)
               }}
               className="h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"

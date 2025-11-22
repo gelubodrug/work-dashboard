@@ -2,25 +2,24 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, MapPin, Route, Loader2, PlayCircle, Check, X, Edit } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
+import { AlertCircle, Loader2, PlayCircle, X, Edit, Wrench, Sparkles, Store, Sandwich, TrendingUp } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 import { createAssignment, updateAssignment } from "@/app/actions/assignments"
 import { getAvailableUsers, checkUserAvailability } from "@/app/actions/users"
+import { getAvailableCars } from "@/app/actions/cars"
 import { useUser } from "@/context/UserContext"
 import { cn } from "@/lib/utils"
 import { AppShell } from "@/components/layout/app-shell"
 import { StoreSelector } from "@/app/components/StoreSelector"
-import { AnimatedTabToggle } from "@/components/animated-tab-toggle"
 import { normalizeCountyName, equalsIgnoreCase } from "@/utils/string-utils"
 
 const TabsTrigger = () => null // placeholder if needed
@@ -46,7 +45,7 @@ export default function DeplasareFormPage() {
   // Form state
   const [type, setType] = useState("")
   const [teamLead, setTeamLead] = useState("")
-  const [members, setMembers] = useState<string[]>(["", "", "", ""])
+  const [members, setMembers] = useState<string[]>(["", "", "", ""]) // Changed from string[] to handle user IDs
   const [storeNumber, setStoreNumber] = useState("")
   const [selectedCounty, setSelectedCounty] = useState("")
   const [cityName, setCityName] = useState("")
@@ -60,6 +59,8 @@ export default function DeplasareFormPage() {
   const [isCreatingNewStore, setIsCreatingNewStore] = useState(false)
   const [originalAssignment, setOriginalAssignment] = useState<any>(null)
   const [carPlate, setCarPlate] = useState("")
+  const [availableCars, setAvailableCars] = useState<string[]>([]) // Added for car selection
+  const [teamMembers, setTeamMembers] = useState<string[]>([]) // Added for team members
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -73,6 +74,13 @@ export default function DeplasareFormPage() {
   const [localities, setLocalities] = useState<string[]>([])
   const [isLoadingLocalities, setIsLoadingLocalities] = useState(false)
   const [localityError, setLocalityError] = useState("")
+
+  const [showNewStoreForm, setShowNewStoreForm] = useState(false)
+
+  const [showMagazin, setShowMagazin] = useState(false)
+  const [showEchipa, setShowEchipa] = useState(false)
+
+  const magazinSectionRef = useRef<HTMLDivElement>(null)
 
   // Fetch assignment data if in edit mode
   useEffect(() => {
@@ -112,7 +120,7 @@ export default function DeplasareFormPage() {
         setType(assignment.type || "")
         setTeamLead(assignment.team_lead || "")
 
-        // Parse members array
+        // Parse members array (now expects IDs)
         let membersList: string[] = []
         try {
           if (typeof assignment.members === "string") {
@@ -123,10 +131,7 @@ export default function DeplasareFormPage() {
         } catch (e) {
           console.error("Error parsing members:", e)
         }
-
-        // Ensure we have exactly 4 members (fill with empty strings if needed)
-        const paddedMembers = [...membersList, "", "", "", ""].slice(0, 4)
-        setMembers(paddedMembers)
+        setTeamMembers(membersList)
 
         // Set store information
         setStoreNumber(assignment.store_number || "")
@@ -162,22 +167,50 @@ export default function DeplasareFormPage() {
   }, [assignmentId])
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchUsersAndCars = async () => {
       try {
+        console.log("[v0] Fetching available users and cars...")
         const users = await getAvailableUsers()
+        console.log("[v0] Available users fetched:", users)
         setAvailableUsers(users)
+
+        const cars = await getAvailableCars()
+        console.log("[v0] Available cars fetched:", cars)
+        const carPlates = cars.map((c) => c.car_plate)
+        // Add missing cars if not in database
+        if (!carPlates.includes("IF 30 XOX")) {
+          carPlates.push("IF 30 XOX")
+        }
+        // Ensure "Altă mașină" is displayed properly
+        const sortedCars = carPlates.filter((plate) => plate !== "alta_masina").sort()
+        sortedCars.push("Altă mașină")
+        setAvailableCars(sortedCars)
       } catch (error) {
-        console.error("Error fetching users:", error)
+        console.error("Error fetching users or cars:", error)
         setAvailableUsers([])
+        setAvailableCars([
+          "B 15 XOX",
+          "B 116 XOX",
+          "B 118 XOX",
+          "B 126 XOX",
+          "B 127 XOX",
+          "B 129 XOX",
+          "B 135 XOX",
+          "IF 01 XOX",
+          "IF 09 XOX",
+          "IF 12 XOX",
+          "IF 14 XOX",
+          "IF 24 XOX",
+          "IF 30 XOX",
+          "IF 32 XOX",
+          "IF 46 XOX",
+          "IF 65 XOX",
+          "Altă mașină",
+        ])
       }
     }
-    fetchUsers()
-
-    // Set team lead to current user if not in edit mode
-    if (!isEditMode && user) {
-      setTeamLead(user.name)
-    }
-  }, [isEditMode, user])
+    fetchUsersAndCars()
+  }, [])
 
   // Now add a useEffect to fetch localities when county changes
   // Add this after the other useEffect hooks
@@ -229,6 +262,27 @@ export default function DeplasareFormPage() {
     return () => clearTimeout(timeoutId)
   }, [selectedCounty])
 
+  const handleDeploymentTypeSelect = (deploymentType: string) => {
+    setType(deploymentType)
+    setShowMagazin(true)
+
+    // Smooth scroll to Magazin section after a short delay to allow the section to render
+    setTimeout(() => {
+      magazinSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      })
+    }, 100)
+  }
+
+  useEffect(() => {
+    if (selectedStore || showNewStoreForm || ["Froo", "BurgerKing"].includes(type)) {
+      setShowEchipa(true)
+    } else {
+      setShowEchipa(false)
+    }
+  }, [selectedStore, showNewStoreForm, type])
+
   // Function to validate store number format
   const validateStoreNumber = (storeNum: string): boolean => {
     return storeNum.length === 4 && /^\d+$/.test(storeNum)
@@ -237,6 +291,7 @@ export default function DeplasareFormPage() {
   const handleStoreSelect = (storeId: number | null, storeData?: any) => {
     setSelectedStore(storeData)
     setIsCreatingNewStore(false)
+    setShowNewStoreForm(false)
 
     if (storeData) {
       setStoreNumber(storeData.store_id?.toString() || "")
@@ -258,24 +313,25 @@ export default function DeplasareFormPage() {
     }
   }
 
-  const handleCreateNewStore = () => {
-    setActiveStoreTab("new")
+  const handleStoreNotFound = () => {
+    setShowNewStoreForm(true)
+    setIsCreatingNewStore(true)
     setSelectedStore(null)
-    setIsCreatingNewStore(true) // Make sure this is set to true
-    setStoreNumber("")
-    setCityName("")
-    setSelectedCounty("")
-    setStoreName("")
-    setStoreAddress("")
+
+    toast({
+      title: "Magazin negăsit",
+      description: "Vă rugăm completați formularul pentru magazin nou.",
+      variant: "default",
+    })
   }
 
-  const validateUserAvailability = async (userName: string) => {
-    if (!userName || userName === "None") return true
+  const validateUserAvailability = async (userId: string) => {
+    if (!userId || userId === "None") return true
 
     // If we're in edit mode and this user was already assigned to this assignment,
     // we don't need to check availability
     if (isEditMode && originalAssignment) {
-      if (userName === originalAssignment.team_lead) return true
+      if (userId === originalAssignment.team_lead) return true
 
       // Check if user was in the original members list
       let originalMembers: string[] = []
@@ -289,15 +345,32 @@ export default function DeplasareFormPage() {
         console.error("Error parsing original members:", e)
       }
 
-      if (originalMembers.includes(userName)) return true
+      if (originalMembers.includes(userId)) return true
     }
 
     try {
-      return await checkUserAvailability(userName)
+      return await checkUserAvailability(userId)
     } catch (error) {
       console.error("Error checking user availability:", error)
       return true // Allow the operation to proceed if the check fails
     }
+  }
+
+  // Handlers for team members
+  const handleAddTeamMember = (memberId: string) => {
+    if (!memberId || memberId === "None") return
+    setTeamMembers((prev) => {
+      if (prev.includes(memberId)) return prev
+      return [...prev, memberId]
+    })
+  }
+
+  const handleRemoveTeamMember = (memberId: string) => {
+    setTeamMembers((prev) => prev.filter((id) => id !== memberId))
+  }
+
+  const handleCancel = () => {
+    router.push("/assignments")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -377,18 +450,32 @@ export default function DeplasareFormPage() {
         }
       }
 
+      const teamLeadName = availableUsers.find((u) => u.id === Number(teamLead))?.name || teamLead
+      const memberNames = teamMembers
+        .filter((memberId) => memberId && memberId !== "None") // Filter out empty strings and "None"
+        .map((memberId) => {
+          const user = availableUsers.find((u) => u.id === Number(memberId))
+          return user?.name || memberId
+        })
+
+      console.log("[v0] Team lead ID:", teamLead, "-> Name:", teamLeadName)
+      console.log("[v0] Member IDs:", teamMembers, "-> Names:", memberNames)
+
       setProcessingStep("Checking user availability...")
       try {
         if (teamLead && !(await validateUserAvailability(teamLead))) {
-          setError(`${teamLead} is already assigned to another active assignment`)
+          setError(
+            `${availableUsers.find((u) => u.id === Number(teamLead))?.name} is already assigned to another active assignment`,
+          )
           setIsSubmitting(false)
           return
         }
 
-        const validMembers = members.filter((m) => m !== "None" && m !== "")
-        for (const member of validMembers) {
-          if (!(await validateUserAvailability(member))) {
-            setError(`${member} is already assigned to another active assignment`)
+        for (const memberId of teamMembers) {
+          if (memberId && memberId !== "None" && !(await validateUserAvailability(memberId))) {
+            setError(
+              `${availableUsers.find((u) => u.id === Number(memberId))?.name} is already assigned to another active assignment`,
+            )
             setIsSubmitting(false)
             return
           }
@@ -472,9 +559,9 @@ export default function DeplasareFormPage() {
         id: isEditMode ? Number(assignmentId) : undefined,
         type,
         location: formattedLocation,
-        team_lead: teamLead,
+        team_lead: teamLeadName, // Use user name instead of ID
         due_date: currentDateISOString, // Convert to ISO string
-        members: members.filter((m) => m !== "None" && m !== ""),
+        members: memberNames, // Use user names instead of IDs
         start_date: isEditMode ? originalAssignment?.start_date : currentDateISOString,
         status: isEditMode ? originalAssignment?.status : "In Deplasare",
         hours: isEditMode ? originalAssignment?.hours : 0,
@@ -530,28 +617,30 @@ export default function DeplasareFormPage() {
   }
 
   // Check if at least team lead or one member is selected
-  const hasTeamMember = teamLead !== "" || members.some((member) => member !== "" && member !== "None")
+  const hasTeamMember = teamLead !== "" || teamMembers.length > 0
 
-  const isFormValid =
-    !isSubmitting &&
-    type && // Ensure type is selected
-    hasTeamMember &&
-    carPlate &&
+  const canSubmit = () => {
+    if (!type) return false
+    if (!teamLead) return false
+    if (!carPlate) return false
+
     // For Froo and BurgerKing, skip store validation
-    (["Froo", "BurgerKing"].includes(type) ||
-      // For other types, validate store selection
-      (activeStoreTab === "existing" && selectedStore) ||
-      (activeStoreTab === "new" &&
-        isCreatingNewStore &&
-        storeNumber &&
-        validateStoreNumber(storeNumber) &&
-        selectedCounty &&
-        cityName &&
-        storeName))
+    if (!["Froo", "BurgerKing"].includes(type)) {
+      // Validate store selection or creation
+      if (!selectedStore && !isCreatingNewStore) return false
+      if (isCreatingNewStore) {
+        if (!storeNumber || !validateStoreNumber(storeNumber)) return false
+        if (!storeName) return false
+        if (!selectedCounty) return false
+        if (!cityName) return false
+        if (!storeAddress) return false
+      }
+    }
+    return true
+  }
 
   // Debug information
   console.log("Form state:", {
-    isFormValid,
     isSubmitting,
     type,
     hasTeamMember,
@@ -564,15 +653,18 @@ export default function DeplasareFormPage() {
     selectedCounty,
     cityName,
     storeName,
+    showNewStoreForm, // Added for debugging
+    teamMembers,
+    teamLead,
+    carPlate,
+    canSubmit: canSubmit(),
   })
 
   return (
     <AppShell>
-      <div className="container mx-auto py-8">
-        <h1 className="text-2xl font-bold mb-6">{isEditMode ? "Modificare Deplasare" : "Creare Deplasare Nouă"}</h1>
-
+      <div className="container mx-auto px-4 py-6 md:py-8 max-w-2xl">
         {error && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive" className="mb-6 rounded-2xl border-2">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
@@ -580,9 +672,9 @@ export default function DeplasareFormPage() {
         )}
 
         {processingStep && (
-          <Alert className="mb-6 bg-blue-50 border-blue-200">
+          <Alert className="mb-6 bg-blue-50 border-blue-200 rounded-2xl border-2">
             <div className="flex items-center">
-              <Loader2 className="h-4 w-4 mr-2 animate-spin text-blue-500" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin text-[#3A63F0]" />
               <AlertTitle>Processing</AlertTitle>
               <AlertDescription>{processingStep}</AlertDescription>
             </div>
@@ -591,527 +683,586 @@ export default function DeplasareFormPage() {
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#3A63F0]" />
             <span className="ml-2">Loading assignment data...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informații Deplasare</CardTitle>
-                  <CardDescription>
-                    {isEditMode ? "Modificați detaliile deplasării" : "Completați detaliile deplasării"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form id="deplasareForm" onSubmit={handleSubmit}>
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                      <div className="flex justify-center mb-4">
-                        <AnimatedTabToggle
-                          options={[
-                            { label: "Detalii", value: "details" },
-                            { label: "Echipă", value: "team" },
-                          ]}
-                          value={activeTab}
-                          onChange={setActiveTab}
+          <div className="w-full">
+            <Card className="rounded-2xl border-2 shadow-sm">
+              <CardContent className="p-6">
+                <form id="deplasareForm" onSubmit={handleSubmit} className="space-y-8">
+                  {/* Step 1: Tip Deplasare */}
+                  <div>
+                    <Label className="text-lg font-semibold mb-3 flex items-center gap-1">
+                      Tip Deplasare <span className="text-red-500">*</span>
+                    </Label>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        {
+                          value: "Interventie",
+                          icon: Wrench,
+                          label: "Intervenție",
+                          bg: "bg-gradient-to-br from-blue-500/90 to-blue-600/90",
+                        },
+                        {
+                          value: "Deschidere",
+                          icon: Store,
+                          label: "Deschidere",
+                          bg: "bg-gradient-to-br from-slate-600/90 to-slate-700/90",
+                        },
+                        {
+                          value: "Optimizare",
+                          icon: TrendingUp,
+                          label: "Optimizare",
+                          bg: "bg-gradient-to-br from-slate-600/90 to-slate-700/90",
+                        },
+                        {
+                          value: "Froo",
+                          icon: Sparkles,
+                          label: "Froo",
+                          bg: "bg-gradient-to-br from-green-500/90 to-green-600/90",
+                        },
+                        {
+                          value: "BurgerKing",
+                          icon: Sandwich,
+                          label: "BurgerKing",
+                          bg: "bg-gradient-to-br from-orange-500/90 to-orange-600/90",
+                        },
+                      ].map((option) => {
+                        const Icon = option.icon
+                        const isSelected = type === option.value
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleDeploymentTypeSelect(option.value)}
+                            disabled={isSubmitting}
+                            className={cn(
+                              "group relative flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 h-32 overflow-hidden",
+                              "backdrop-blur-xl border shadow-lg",
+                              isSelected
+                                ? `${option.bg} border-white/30 shadow-xl scale-[1.02]`
+                                : "bg-white/60 border-gray-200/50 hover:bg-white/80 hover:scale-[1.01] hover:shadow-xl",
+                              isSubmitting && "opacity-50 cursor-not-allowed",
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+                                !isSelected && "bg-gradient-to-br from-white/50 to-transparent",
+                              )}
+                            />
+
+                            <Icon
+                              className={cn(
+                                "h-10 w-10 mb-2 relative z-10 transition-transform duration-300 group-hover:scale-110",
+                                isSelected ? "text-white" : "text-gray-700",
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                "font-semibold text-base relative z-10",
+                                isSelected ? "text-white" : "text-gray-800",
+                              )}
+                            >
+                              {option.label}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Step 2: Magazin (only show after selecting deployment type, and only for Interventie, Deschidere, Optimizare) */}
+                  {showMagazin && type && !["Froo", "BurgerKing"].includes(type) && (
+                    <div ref={magazinSectionRef} className="animate-in slide-in-from-top-2 duration-300">
+                      <Separator className="mb-6" />
+                      <Label className="text-sm font-semibold text-foreground mb-3 block">
+                        Magazin <span className="text-red-500">*</span>
+                      </Label>
+
+                      <div className="space-y-3">
+                        <StoreSelector
+                          onStoreSelect={handleStoreSelect}
+                          onStoreNotFound={handleStoreNotFound}
+                          initialStoreId={selectedStore?.store_id || null}
                         />
-                      </div>
-                      <TabsContent value="details">
-                        <div className="space-y-4 mt-4">
-                          <div>
-                            <Label htmlFor="type">
-                              Tip Deplasare <span className="text-red-500">*</span>
-                            </Label>
-                            <div className="flex flex-wrap gap-2 mt-1">
-                              {[
-                                { value: "Interventie", color: "blue" },
-                                { value: "Deschidere", color: "blue" },
-                                { value: "Optimizare", color: "blue" },
-                                { value: "Froo", color: "green", isNew: true },
-                                { value: "BurgerKing", color: "orange", isNew: true },
-                              ].map((option) => (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  onClick={() => {
-                                    setType(option.value)
-                                    // Auto-switch to team tab for Froo and BurgerKing
-                                    if (option.value === "Froo" || option.value === "BurgerKing") {
-                                      setActiveTab("team")
-                                    }
-                                  }}
-                                  disabled={isSubmitting}
-                                  className={cn(
-                                    "px-3 py-1.5 rounded-full transition-colors text-xs font-medium",
-                                    // Selected state
-                                    type === option.value
-                                      ? option.color === "green"
-                                        ? "bg-green-600 text-white border border-green-700"
-                                        : option.color === "orange"
-                                          ? "bg-orange-600 text-white border border-orange-700"
-                                          : "bg-blue-600 text-white border border-blue-700"
-                                      : // Unselected state
-                                        option.color === "green"
-                                        ? "bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
-                                        : option.color === "orange"
-                                          ? "bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200"
-                                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300",
-                                    isSubmitting && "opacity-50 cursor-not-allowed",
-                                  )}
+
+                        {showNewStoreForm && !selectedStore && (
+                          // Applied glassmorphism to new store form
+                          <div className="space-y-4 p-5 bg-blue-500/10 backdrop-blur-xl rounded-2xl border border-blue-200/50 shadow-lg animate-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-sm font-semibold text-blue-900">Magazin nou - Completați detaliile</p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowNewStoreForm(false)
+                                  setIsCreatingNewStore(false)
+                                  setStoreNumber("")
+                                  setCityName("")
+                                  setSelectedCounty("")
+                                  setStoreName("")
+                                  setStoreAddress("")
+                                }}
+                                className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50/80 backdrop-blur-sm transition-colors"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="storeNumber" className="text-sm font-medium text-foreground">
+                                Nr. Magazin <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="storeNumber"
+                                value={storeNumber}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  if (/^\d*$/.test(value) && value.length <= 4) {
+                                    setStoreNumber(value)
+                                  }
+                                }}
+                                disabled={isSubmitting}
+                                className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+                                placeholder="Ex: 3868"
+                                maxLength={4}
+                              />
+                              <p className="text-xs text-muted-foreground mt-1.5">Format: 4 cifre</p>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="storeName" className="text-sm font-medium text-foreground">
+                                Denumire Magazin <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="storeName"
+                                value={storeName}
+                                onChange={(e) => setStoreName(e.target.value)}
+                                disabled={isSubmitting}
+                                className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+                                placeholder="Ex: Profi Deva Constructorilor"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="county" className="text-sm font-medium text-foreground">
+                                Județ <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="county"
+                                value={selectedCounty}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  setSelectedCounty(value)
+                                  if (!equalsIgnoreCase(value, selectedCounty)) {
+                                    setCityName("")
+                                  }
+                                }}
+                                onBlur={() => {
+                                  const normalized = normalizeCountyName(selectedCounty)
+                                  setSelectedCounty(normalized)
+                                }}
+                                disabled={isSubmitting}
+                                className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+                                placeholder="Ex: București, Ilfov, Cluj"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="city" className="text-sm font-medium text-foreground">
+                                Oraș/Comună <span className="text-red-500">*</span>
+                              </Label>
+                              {localities.length > 0 ? (
+                                <Select
+                                  onValueChange={(value) => setCityName(value)}
+                                  value={cityName}
+                                  disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
                                 >
-                                  {option.isNew && <span className="mr-1">✨</span>}
-                                  {option.value}
-                                </button>
-                              ))}
+                                  <SelectTrigger
+                                    id="city"
+                                    className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+                                  >
+                                    <SelectValue placeholder="Selectați localitatea" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {localities.map((locality) => (
+                                      <SelectItem key={locality} value={locality}>
+                                        {locality}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  id="city"
+                                  value={cityName}
+                                  onChange={(e) => setCityName(e.target.value)}
+                                  disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
+                                  className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+                                  placeholder={
+                                    isLoadingLocalities
+                                      ? "Se încarcă..."
+                                      : selectedCounty
+                                        ? "Introduceți localitatea"
+                                        : "Selectați județul mai întâi"
+                                  }
+                                />
+                              )}
+                              {isLoadingLocalities && (
+                                <p className="text-xs text-muted-foreground mt-1.5 flex items-center">
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                  Se încarcă localitățile...
+                                </p>
+                              )}
+                              {localityError && <p className="text-xs text-amber-600 mt-1.5">{localityError}</p>}
+                            </div>
+
+                            <div>
+                              <Label htmlFor="storeAddress" className="text-sm font-medium text-foreground">
+                                Adresa <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="storeAddress"
+                                value={storeAddress}
+                                onChange={(e) => setStoreAddress(e.target.value)}
+                                disabled={isSubmitting}
+                                className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+                                placeholder="Ex: Strada Principală, nr. 10"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1.5">Strada și numărul</p>
                             </div>
                           </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-                          {/* Only show store selection for Interventie, Deschidere, Optimizare */}
-                          {type && !["Froo", "BurgerKing"].includes(type) && (
-                            <div className="mt-4">
-                              <Tabs value={activeStoreTab} onValueChange={setActiveStoreTab} className="w-full">
-                                <div className="flex justify-center mb-4">
-                                  <AnimatedTabToggle
-                                    options={[
-                                      { label: "Magazin", value: "existing" },
-                                      { label: "✨Nou", value: "new" },
-                                    ]}
-                                    value={activeStoreTab}
-                                    onChange={(value) => {
-                                      setActiveStoreTab(value)
-                                      // Set isCreatingNewStore based on the selected tab
-                                      setIsCreatingNewStore(value === "new")
-                                    }}
-                                  />
-                                </div>
+                  {/* Show info message for Froo and BurgerKing */}
+                  {showMagazin && type && ["Froo", "BurgerKing"].includes(type) && (
+                    <Alert
+                      ref={magazinSectionRef}
+                      className="bg-blue-50 border-2 border-blue-200 rounded-xl animate-in slide-in-from-top-2 duration-300"
+                    >
+                      <AlertDescription className="text-blue-700 text-sm">
+                        Pentru {type}, nu este necesară selectarea magazinului.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
-                                <div className="text-xs text-muted-foreground mt-2">
-                                  {activeStoreTab === "existing"
-                                    ? "Alegeti magazin existent"
-                                    : "Adăugați un magazin nou"}
-                                </div>
-                                <TabsContent
-                                  value="existing"
-                                  className="bg-transparent border border-border rounded-b-md p-4"
-                                >
-                                  <div className="space-y-2 mt-4">
-                                    <StoreSelector
-                                      onStoreSelect={handleStoreSelect}
-                                      initialStoreId={selectedStore?.store_id || null}
-                                    />
-                                    {!selectedStore && storeNumber && (
-                                      <Alert className="bg-yellow-50 border-yellow-200 p-2 mt-2">
-                                        <div className="flex items-center">
-                                          <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
-                                          <AlertDescription className="text-yellow-700 text-xs">
-                                            Magazin negăsit. Apasati Magazin Nou si completați datele cerute.
-                                          </AlertDescription>
-                                        </div>
-                                      </Alert>
-                                    )}
-                                    {selectedStore && (
-                                      <Alert className="bg-green-50 border-green-200 p-2">
-                                        <div className="flex items-center">
-                                          <Check className="h-4 w-4 text-green-600 mr-2" />
-                                          <AlertDescription className="text-green-600 text-xs">
-                                            Magazin selectat: {selectedStore.description} - {selectedStore.city},{" "}
-                                            {selectedStore.county}
-                                          </AlertDescription>
-                                        </div>
-                                      </Alert>
-                                    )}
-                                  </div>
-                                </TabsContent>
+                  {/* Step 3: Echipă (only show after store selection or for Froo/BurgerKing) */}
+                  {showEchipa && (
+                    <div className="animate-in slide-in-from-top-2 duration-300">
+                      <Separator className="mb-6" />
+                      <Label className="text-sm font-semibold text-foreground mb-3 block">
+                        Echipă <span className="text-red-500">*</span>
+                      </Label>
 
-                                <TabsContent
-                                  value="new"
-                                  className="bg-transparent border border-neutral-300 rounded-b-md p-4"
-                                >
-                                  <div className="space-y-4 mt-4">
-                                    <div>
-                                      <Label htmlFor="storeNumber" className="text-blue-700">
-                                        Nr. Magazin <span className="text-red-500">*</span>
-                                      </Label>
-                                      <Input
-                                        id="storeNumber"
-                                        value={storeNumber}
-                                        onChange={(e) => {
-                                          const value = e.target.value
-                                          // Only allow digits and limit to 4 characters
-                                          if (/^\d*$/.test(value) && value.length <= 4) {
-                                            setStoreNumber(value)
-                                          }
-                                        }}
-                                        disabled={isSubmitting}
-                                        className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                        placeholder="4 cifre (ex: 3868)"
-                                        maxLength={4}
-                                      />
-                                      <div className="text-xs text-blue-600 mt-1">
-                                        Introduceți numarul magazinului (4 cifre)
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      <Label htmlFor="storeName" className="text-blue-700">
-                                        Denumire Magazin <span className="text-red-500">*</span>
-                                      </Label>
-                                      <Input
-                                        id="storeName"
-                                        value={storeName}
-                                        onChange={(e) => setStoreName(e.target.value)}
-                                        disabled={isSubmitting}
-                                        className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                        placeholder="Ex: Profi Deva Constructorilor"
-                                      />
-                                    </div>
-
-                                    <div>
-                                      <Label htmlFor="county" className="text-blue-700">
-                                        Județ <span className="text-red-500">*</span>
-                                      </Label>
-                                      <div className="relative">
-                                        <Input
-                                          id="county"
-                                          value={selectedCounty}
-                                          onChange={(e) => {
-                                            const value = e.target.value
-                                            setSelectedCounty(value)
-
-                                            // When county changes, reset city
-                                            if (!equalsIgnoreCase(value, selectedCounty)) {
-                                              setCityName("")
-                                            }
-                                          }}
-                                          onBlur={() => {
-                                            // Normalize county name on blur
-                                            const normalized = normalizeCountyName(selectedCounty)
-                                            setSelectedCounty(normalized)
-                                          }}
-                                          disabled={isSubmitting}
-                                          className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                          placeholder="Introduceți județul"
-                                        />
-                                      </div>
-                                      <div className="text-xs text-blue-600 mt-1">
-                                        Introduceți numele județului (ex: București, Ilfov, Cluj)
-                                      </div>
-                                    </div>
-
-                                    {/* Now replace the city input field with a select dropdown when localities are available */}
-                                    <div>
-                                      <Label htmlFor="city" className="text-blue-700">
-                                        Oraș/Comună <span className="text-red-500">*</span>
-                                      </Label>
-                                      {localities.length > 0 ? (
-                                        <Select
-                                          onValueChange={(value) => setCityName(value)}
-                                          value={cityName}
-                                          disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
-                                        >
-                                          <SelectTrigger
-                                            id="city"
-                                            className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                          >
-                                            <SelectValue placeholder="Selectați localitatea" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {localities.map((locality) => (
-                                              <SelectItem key={locality} value={locality}>
-                                                {locality}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <Input
-                                          id="city"
-                                          value={cityName}
-                                          onChange={(e) => setCityName(e.target.value)}
-                                          disabled={isSubmitting || !selectedCounty || isLoadingLocalities}
-                                          className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                          placeholder={
-                                            isLoadingLocalities
-                                              ? "Se încarcă localitățile..."
-                                              : selectedCounty
-                                                ? "Introduceți localitatea"
-                                                : "Selectați mai întâi județul"
-                                          }
-                                        />
-                                      )}
-                                      {isLoadingLocalities && (
-                                        <div className="text-xs text-blue-600 mt-1 flex items-center">
-                                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                          Se încarcă localitățile...
-                                        </div>
-                                      )}
-                                      {localityError && (
-                                        <div className="text-xs text-orange-600 mt-1">{localityError}</div>
-                                      )}
-                                    </div>
-
-                                    <div>
-                                      <Label htmlFor="storeAddress" className="text-blue-700">
-                                        Adresa (strada, număr) <span className="text-red-500">*</span>
-                                      </Label>
-                                      <Input
-                                        id="storeAddress"
-                                        value={storeAddress}
-                                        onChange={(e) => setStoreAddress(e.target.value)}
-                                        disabled={isSubmitting}
-                                        className="mt-1 border-blue-200 focus-visible:ring-blue-400"
-                                        placeholder="Ex: Strada Principală, nr. 10"
-                                      />
-                                    </div>
-
-                                    <div className="flex justify-end space-x-2 mt-4">
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          setActiveStoreTab("existing")
-                                          setIsCreatingNewStore(false)
-                                        }}
-                                        className="h-8 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
-                                      >
-                                        <X className="h-4 w-4 mr-1" />
-                                        Anulează
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </TabsContent>
-                              </Tabs>
-                            </div>
-                          )}
-
-                          {/* Show info message for Froo and BurgerKing */}
-                          {type && ["Froo", "BurgerKing"].includes(type) && (
-                            <div className="mt-4">
-                              <Alert className="bg-blue-50 border-blue-200">
-                                <AlertDescription className="text-blue-700 text-sm">
-                                  Pentru {type}, nu este necesară selectarea magazinului. Continuați la tabul "Echipă"
-                                  pentru a completa informațiile despre echipă.
-                                </AlertDescription>
-                              </Alert>
-                            </div>
-                          )}
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="team">
-                        <div className="space-y-4 mt-4">
-                          <div>
-                            <Label htmlFor="teamLead">
-                              Driver <span className="text-red-500">*</span>
-                            </Label>
-                            <Select
-                              onValueChange={(value) => setTeamLead(value)}
-                              value={teamLead}
-                              disabled={isSubmitting}
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="teamLead" className="text-sm font-medium text-foreground">
+                            Driver <span className="text-red-500">*</span>
+                          </Label>
+                          {console.log("[v0] Rendering driver select, availableUsers count:", availableUsers.length)}
+                          <Select
+                            onValueChange={(value) => {
+                              setTeamLead(value)
+                              setCarPlate("") // Reset car plate when driver changes
+                              setTeamMembers([]) // Reset team members when driver changes
+                              // Also reset the members array to ensure correct filtering
+                              setMembers(["", "", "", ""])
+                            }}
+                            value={teamLead}
+                            disabled={isSubmitting}
+                          >
+                            <SelectTrigger
+                              id="teamLead"
+                              className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
                             >
-                              <SelectTrigger id="teamLead" className="mt-1">
-                                <SelectValue placeholder="Selectează șef de echipă" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableUsers.map((user) => (
-                                  <SelectItem key={user.id} value={user.name}>
+                              <SelectValue placeholder="Selectează șef de echipă" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableUsers.length === 0 && (
+                                <div className="p-2 text-sm text-muted-foreground">Se încarcă utilizatori...</div>
+                              )}
+                              {availableUsers.map((user) => (
+                                <SelectItem key={user.id} value={String(user.id)}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="carPlate" className="text-sm font-medium text-foreground">
+                            Mașină <span className="text-red-500">*</span>
+                          </Label>
+                          <Select
+                            onValueChange={(value) => setCarPlate(value)}
+                            value={carPlate}
+                            disabled={isSubmitting || !teamLead}
+                          >
+                            <SelectTrigger
+                              id="carPlate"
+                              className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg"
+                            >
+                              <SelectValue
+                                placeholder={teamLead ? "Selectează mașina" : "Selectați driver mai întâi"}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableCars.map((car) => (
+                                <SelectItem key={car} value={car === "Altă mașină" ? "alta_masina" : car}>
+                                  {car}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-foreground">Membru 1</Label>
+                          <Select
+                            onValueChange={(value) => {
+                              const newMembers = [...members]
+                              newMembers[0] = value
+                              setMembers(newMembers)
+                              // Update teamMembers state as well if it's not 'None'
+                              if (value && value !== "None") {
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[0] = value
+                                  return updated
+                                })
+                              } else {
+                                // Remove if 'None' or empty
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[0] = ""
+                                  return updated
+                                })
+                              }
+                            }}
+                            value={members[0]}
+                            disabled={isSubmitting || !teamLead}
+                          >
+                            <SelectTrigger className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg">
+                              <SelectValue
+                                placeholder={teamLead ? "Selectează membru 1" : "Selectați driver mai întâi"}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="None">Niciunul</SelectItem>
+                              {availableUsers
+                                .filter(
+                                  (user) =>
+                                    String(user.id) !== teamLead &&
+                                    !members.slice(1).includes(String(user.id)) &&
+                                    !members.slice(0, 1).includes(String(user.id)), // Ensure not already selected in current members array
+                                )
+                                .map((user) => (
+                                  <SelectItem key={user.id} value={String(user.id)}>
                                     {user.name}
                                   </SelectItem>
                                 ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor="carPlate">
-                              Masina <span className="text-red-500">*</span>
-                            </Label>
-                            <Select
-                              onValueChange={(value) => setCarPlate(value)}
-                              value={carPlate}
-                              disabled={isSubmitting}
-                            >
-                              <SelectTrigger id="carPlate" className="mt-1">
-                                <SelectValue placeholder="Selectează mașina" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="B 116 XOX">B 116 XOX</SelectItem>
-                                <SelectItem value="B 118 XOX">B 118 XOX</SelectItem>
-                                <SelectItem value="B 126 XOX">B 126 XOX</SelectItem>
-                                <SelectItem value="B 127 XOX">B 127 XOX</SelectItem>
-                                <SelectItem value="B 129 XOX">B 129 XOX</SelectItem>
-                                <SelectItem value="B 135 XOX">B 135 XOX</SelectItem>
-                                <SelectItem value="B 15 XOX">B 15 XOX</SelectItem>
-                                <SelectItem value="IF 01 XOX">IF 01 XOX</SelectItem>
-                                <SelectItem value="IF 09 XOX">IF 09 XOX</SelectItem>
-                                <SelectItem value="IF 12 XOX">IF 12 XOX</SelectItem>
-                                <SelectItem value="IF 14 XOX">IF 14 XOX</SelectItem>
-                                <SelectItem value="IF 24 XOX">IF 24 XOX</SelectItem>
-                                <SelectItem value="IF 30 XOX">IF 30 XOX</SelectItem>
-                                <SelectItem value="IF 32 XOX">IF 32 XOX</SelectItem>
-                                <SelectItem value="IF 46 XOX">IF 46 XOX</SelectItem>
-                                <SelectItem value="IF 65 XOX">IF 65 XOX</SelectItem>
-                                <SelectItem value="alta_masina">Altă mașină</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {[1, 2, 3, 4].map((num, index) => (
-                            <div key={num}>
-                              <Label htmlFor={`member${num}`}>Membru {num}</Label>
-                              <Select
-                                onValueChange={(value) => {
-                                  const newMembers = [...members]
-                                  newMembers[index] = value
-                                  setMembers(newMembers)
-                                }}
-                                value={members[index]}
-                                disabled={isSubmitting}
-                              >
-                                <SelectTrigger id={`member${num}`} className="mt-1">
-                                  <SelectValue placeholder={`Selectează membru ${num}`} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="None">None</SelectItem>
-                                  {availableUsers
-                                    .filter((u) => u.name !== teamLead)
-                                    .map((user) => (
-                                      <SelectItem key={user.id} value={user.name}>
-                                        {user.name}
-                                      </SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </TabsContent>
-                    </Tabs>
-                  </form>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push("/assignments")}
-                    disabled={isSubmitting}
-                    className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Anulează
-                  </Button>
-                  <Button
-                    type="submit"
-                    form="deplasareForm"
-                    disabled={!isFormValid}
-                    onClick={(e) => {
-                      console.log("Button clicked, isFormValid:", isFormValid)
-                      if (isFormValid) {
-                        handleSubmit(e)
-                      } else {
-                        console.log("Form is not valid")
-                      }
-                    }}
-                    className={`${isFormValid ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {isEditMode ? "Se actualizează..." : "Se procesează..."}
-                      </>
-                    ) : (
-                      <>
-                        {isEditMode ? (
-                          <>
-                            <Edit className="h-4 w-4 mr-2" />
-                            ACTUALIZEAZĂ
-                          </>
-                        ) : (
-                          <>
-                            <PlayCircle className="h-4 w-4 mr-2" />
-                            START
-                          </>
-                        )}
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
 
-            <div className="md:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informații Rută</CardTitle>
-                  <CardDescription>Detalii despre ruta deplasării</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="flex items-center">
-                      <MapPin className="h-5 w-5 mr-2 text-primary" />
-                      <div>
-                        <div className="text-sm text-muted-foreground">Locație de Pornire</div>
-                        <div className="font-medium">
-                          {HQ_LOCATION.description} ({HQ_LOCATION.address}, {HQ_LOCATION.city})
+                        <div>
+                          <Label className="text-sm font-medium text-foreground">Membru 2</Label>
+                          <Select
+                            onValueChange={(value) => {
+                              const newMembers = [...members]
+                              newMembers[1] = value
+                              setMembers(newMembers)
+                              if (value && value !== "None") {
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[1] = value
+                                  return updated
+                                })
+                              } else {
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[1] = ""
+                                  return updated
+                                })
+                              }
+                            }}
+                            value={members[1]}
+                            disabled={isSubmitting || !teamLead}
+                          >
+                            <SelectTrigger className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg">
+                              <SelectValue
+                                placeholder={teamLead ? "Selectează membru 2" : "Selectați driver mai întâi"}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="None">Niciunul</SelectItem>
+                              {availableUsers
+                                .filter(
+                                  (user) =>
+                                    String(user.id) !== teamLead &&
+                                    String(user.id) !== members[0] && // Exclude member 1
+                                    !members.slice(2).includes(String(user.id)) &&
+                                    !members.slice(1, 2).includes(String(user.id)), // Ensure not already selected
+                                )
+                                .map((user) => (
+                                  <SelectItem key={user.id} value={String(user.id)}>
+                                    {user.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </div>
-                    </div>
 
-                    <Separator />
-
-                    <div className="flex items-center">
-                      <MapPin className="h-5 w-5 mr-2 text-primary" />
-                      <div>
-                        <div className="text-sm text-muted-foreground">Destinație</div>
-                        <div className="font-medium">
-                          {selectedStore
-                            ? `${selectedStore.description} - ${selectedStore.city}, ${selectedStore.county}`
-                            : isCreatingNewStore && storeName && cityName && selectedCounty
-                              ? `${storeName} - ${cityName}, ${selectedCounty}`
-                              : "Selectați un magazin existent sau creați unul nou"}
+                        <div>
+                          <Label className="text-sm font-medium text-foreground">Membru 3</Label>
+                          <Select
+                            onValueChange={(value) => {
+                              const newMembers = [...members]
+                              newMembers[2] = value
+                              setMembers(newMembers)
+                              if (value && value !== "None") {
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[2] = value
+                                  return updated
+                                })
+                              } else {
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[2] = ""
+                                  return updated
+                                })
+                              }
+                            }}
+                            value={members[2]}
+                            disabled={isSubmitting || !teamLead}
+                          >
+                            <SelectTrigger className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg">
+                              <SelectValue
+                                placeholder={teamLead ? "Selectează membru 3" : "Selectați driver mai întâi"}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="None">Niciunul</SelectItem>
+                              {availableUsers
+                                .filter(
+                                  (user) =>
+                                    String(user.id) !== teamLead &&
+                                    String(user.id) !== members[0] && // Exclude member 1
+                                    String(user.id) !== members[1] && // Exclude member 2
+                                    !members.slice(3).includes(String(user.id)) &&
+                                    !members.slice(2, 3).includes(String(user.id)), // Ensure not already selected
+                                )
+                                .map((user) => (
+                                  <SelectItem key={user.id} value={String(user.id)}>
+                                    {user.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </div>
-                    </div>
 
-                    <Separator />
-
-                    <div className="flex items-center">
-                      <Route className="h-5 w-5 mr-2 text-primary" />
-                      <div>
-                        <div className="text-sm text-muted-foreground">Rută</div>
-                        <div className="font-medium">
-                          {selectedStore
-                            ? `Chitila → ${selectedStore.city} → Chitila`
-                            : isCreatingNewStore && cityName
-                              ? `Chitila → ${cityName} → Chitila`
-                              : "Ruta va fi calculată automat"}
+                        <div>
+                          <Label className="text-sm font-medium text-foreground">Membru 4</Label>
+                          <Select
+                            onValueChange={(value) => {
+                              const newMembers = [...members]
+                              newMembers[3] = value
+                              setMembers(newMembers)
+                              if (value && value !== "None") {
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[3] = value
+                                  return updated
+                                })
+                              } else {
+                                setTeamMembers((prev) => {
+                                  const updated = [...prev]
+                                  updated[3] = ""
+                                  return updated
+                                })
+                              }
+                            }}
+                            value={members[3]}
+                            disabled={isSubmitting || !teamLead}
+                          >
+                            <SelectTrigger className="mt-2 border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-[#3A63F0] rounded-lg">
+                              <SelectValue
+                                placeholder={teamLead ? "Selectează membru 4" : "Selectați driver mai întâi"}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="None">Niciunul</SelectItem>
+                              {availableUsers
+                                .filter(
+                                  (user) =>
+                                    String(user.id) !== teamLead &&
+                                    String(user.id) !== members[0] && // Exclude member 1
+                                    String(user.id) !== members[1] && // Exclude member 2
+                                    String(user.id) !== members[2] && // Exclude member 3
+                                    !members.slice(3, 4).includes(String(user.id)), // Ensure not already selected
+                                )
+                                .map((user) => (
+                                  <SelectItem key={user.id} value={String(user.id)}>
+                                    {user.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </div>
+                  )}
 
-                    {isEditMode && originalAssignment && (
-                      <>
-                        <Separator />
-                        <div className="flex items-center">
-                          <Route className="h-5 w-5 mr-2 text-primary" />
-                          <div>
-                            <div className="text-sm text-muted-foreground">Distanță calculată</div>
-                            <div className="font-medium flex items-center">
-                              {originalAssignment.km > 0 ? (
-                                <span>{originalAssignment.km} km</span>
-                              ) : (
-                                <span className="text-orange-600">
-                                  Distanța nu a fost calculată încă. Salvați modificările și apoi calculați distanța.
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                  <div className="flex items-center gap-3 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancel}
+                      disabled={isSubmitting}
+                      className="flex-1 flex items-center justify-center py-3.5 border-2 border-gray-300/50 rounded-full font-semibold text-center bg-white/60 backdrop-blur-xl hover:bg-white/80 shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Anulează
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || !canSubmit()}
+                      className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-gradient-to-r from-[#4285F4] to-[#3374E4] backdrop-blur-xl hover:from-[#3374E4] hover:to-[#2A5FD4] text-white font-semibold disabled:opacity-50 shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {processingStep || "Se procesează..."}
+                        </>
+                      ) : (
+                        <>
+                          {isEditMode ? (
+                            <>
+                              <Edit className="h-4 w-4" />
+                              Actualizează
+                            </>
+                          ) : (
+                            <>
+                              <PlayCircle className="h-4 w-4" />
+                              START
+                            </>
+                          )}
+                        </>
+                      )}
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </form>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
