@@ -22,6 +22,7 @@ import {
   PlayCircle,
   StopCircle,
   Plus,
+  RefreshCw,
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { format, parseISO, differenceInHours, formatDistanceToNow } from "date-fns"
@@ -167,10 +168,6 @@ export default function AssignmentsPage() {
   // Delete dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null)
-
-  // Recalculation state
-  const [isRecalculating, setIsRecalculating] = useState(false)
-  const [recalculationResult, setRecalculationResult] = useState<any>(null)
 
   useEffect(() => {
     const tab = searchParams.get("tab")
@@ -333,39 +330,8 @@ export default function AssignmentsPage() {
     }
   }
 
-  const handleRecalculateDistance = async (assignmentId: number) => {
-    setSelectedAssignmentId(assignmentId)
-    setIsRecalculating(true)
-    setRecalculationResult(null)
-
-    try {
-      const response = await fetch(`/api/assignments/${assignmentId}/recalculate`, {
-        method: "POST",
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to recalculate distance")
-      }
-
-      const result = await response.json()
-      setRecalculationResult(result)
-
-      toast({
-        title: "Success",
-        description: "Distance recalculated successfully",
-      })
-
-      fetchAssignments()
-    } catch (error) {
-      console.error("Error recalculating distance:", error)
-      toast({
-        title: "Error",
-        description: `Failed to recalculate distance: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
-      })
-    } finally {
-      setIsRecalculating(false)
-    }
+  const handleRecalculateDistance = (assignmentId: number) => {
+    router.push(`/test/assignment-route?id=${assignmentId}`)
   }
 
   const handleDeleteAssignment = async (password: string) => {
@@ -500,6 +466,16 @@ export default function AssignmentsPage() {
                                 gpsCompletionDate={assignment.return_time}
                                 returnTime={assignment.return_time}
                               />
+                              <div
+                                className="flex items-center gap-1 text-orange-500 mt-0.5 cursor-pointer hover:text-orange-600 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleRecalculateDistance(assignment.id)
+                                }}
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                                <span className="font-medium">{assignment.km || 0} km</span>
+                              </div>
                             </div>
                           </div>
 
