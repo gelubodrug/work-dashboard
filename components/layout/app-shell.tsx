@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, createContext, useContext } from "react"
+import { useState, useCallback, createContext, useContext, useEffect } from "react"
 import type React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Search, MapPin, Route, Sun, Moon } from "lucide-react"
@@ -22,10 +22,13 @@ export const useRefresh = () => useContext(RefreshContext)
 
 interface AppShellProps {
   children: React.ReactNode
+  searchTerm?: string
+  onSearch?: (term: string) => void
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, searchTerm, onSearch }: AppShellProps) {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [localSearchTerm, setLocalSearchTerm] = useState("")
   const pathname = usePathname()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
@@ -33,6 +36,24 @@ export function AppShell({ children }: AppShellProps) {
   const refreshGPSData = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1)
   }, [])
+
+  // Sync local search term with prop if provided
+  useEffect(() => {
+    if (searchTerm !== undefined) {
+      setLocalSearchTerm(searchTerm)
+    }
+  }, [searchTerm])
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value
+    setLocalSearchTerm(newValue)
+    if (onSearch) {
+      onSearch(newValue)
+    }
+  }
+
+  // Only show search input on assignments page or if props are provided
+  const showSearch = pathname === "/assignments" || onSearch !== undefined
 
   return (
     <RefreshContext.Provider value={{ refreshTrigger, refreshGPSData }}>
@@ -52,6 +73,9 @@ export function AppShell({ children }: AppShellProps) {
                 type="text"
                 placeholder="Search by store number, city, county, or team lead..."
                 className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 px-2"
+                value={localSearchTerm}
+                onChange={handleSearchChange}
+                disabled={!showSearch}
               />
 
               <button

@@ -402,7 +402,7 @@ export default function AssignmentsPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell searchTerm={searchTerm} onSearch={setSearchTerm}>
       <div className="container mx-auto py-6 max-w-5xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex justify-between items-center mb-4">
