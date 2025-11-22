@@ -30,6 +30,7 @@ import { TeamMemberAvatars } from "@/components/team-member-avatars"
 import { GPSTimestamps } from "@/components/gps-timestamps"
 import { RoutePointsDisplay } from "@/components/route-points-display"
 import { finalizeAssignmentWithTeam, manuallyCalculateRoute } from "@/app/actions/assignments"
+import { ConfirmFinalizeDialog } from "@/components/confirm-finalize-dialog"
 
 import {
   DropdownMenu,
@@ -637,6 +638,17 @@ export default function AssignmentsPage() {
           </TabsContent>
         </Tabs>
       </div>
+      <ConfirmFinalizeDialog
+        open={isConfirmFinalizeOpen}
+        onOpenChange={setIsConfirmFinalizeOpen}
+        onConfirm={confirmFinalize}
+        isSubmitting={isSubmitting}
+        title="Finalize Assignment"
+        description={`Are you sure you want to finalize assignment ${selectedAssignment?.id}?`}
+        assignmentId={selectedAssignment?.id || 0}
+        km={selectedAssignment?.km || 0}
+        assignmentType={selectedAssignment?.type}
+      />
     </AppShell>
   )
 }

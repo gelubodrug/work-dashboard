@@ -5,7 +5,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -63,17 +62,17 @@ export function ConfirmFinalizeDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Finalize Assignment</AlertDialogTitle>
-          <AlertDialogDescription className="space-y-3">
-            <p>Are you sure you want to finalize assignment {assignmentId}?</p>
+          <div className="text-muted-foreground text-sm space-y-3">
+            <div>Are you sure you want to finalize assignment {assignmentId}?</div>
 
             {hasZeroKm && !isZeroKmAllowed && (
               <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
                 <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-red-900 text-sm">Route not calculated</p>
-                  <p className="text-red-700 text-sm">
+                  <div className="font-semibold text-red-900 text-sm">Route not calculated</div>
+                  <div className="text-red-700 text-sm">
                     The km distance is 0. You must calculate the route before finalizing for accurate records.
-                  </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -82,22 +81,22 @@ export function ConfirmFinalizeDialog({
               <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-blue-900 text-sm">Zero km expected</p>
-                  <p className="text-blue-700 text-sm">
+                  <div className="font-semibold text-blue-900 text-sm">Zero km expected</div>
+                  <div className="text-blue-700 text-sm">
                     This is a {assignmentType} assignment where 0 km is acceptable.
-                  </p>
+                  </div>
                 </div>
               </div>
             )}
 
             {!hasZeroKm && (
               <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-green-900 text-sm">
+                <div className="text-green-900 text-sm">
                   ✓ Route calculated: <span className="font-semibold">{km} km</span>
-                </p>
+                </div>
               </div>
             )}
-          </AlertDialogDescription>
+          </div>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
